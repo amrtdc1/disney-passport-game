@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Disney World Passport Collector</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #F4C04B;
+    --gold-dark: #C9962A;
+    --navy: #0D1B3E;
+    --navy-light: #1A2F5E;
+    --red: #D4213D;
+    --cream: #FDF6E3;
+    --stamp-green: #2D6A4F;
+    --stamp-blue: #1B4F8A;
+    --stamp-purple: #5B2D8A;
+    --stamp-red: #8A1B2D;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    min-height: 100vh;
+    color: var(--cream);
+    overflow-x: hidden;
+  }
+
+/* ── BACKGROUND TEXTURE ── */
+body::before {
+content: ‘’;
+position: fixed; inset: 0;
+background:
+radial-gradient(ellipse at 20% 10%, rgba(244,192,75,0.08) 0%, transparent 50%),
+radial-gradient(ellipse at 80% 90%, rgba(212,33,61,0.08) 0%, transparent 50%),
+repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.01) 40px, rgba(255,255,255,0.01) 41px);
+pointer-events: none; z-index: 0;
+}
+
+.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 100px; }
+
+/* ── HEADER ── */
+.header {
+text-align: center;
+padding: 28px 20px 20px;
+border-bottom: 1px solid rgba(244,192,75,0.2);
+position: relative;
+}
+.header-badge {
+display: inline-block;
+background: var(–gold);
+color: var(–navy);
+font-size: 9px;
+font-weight: 600;
+letter-spacing: 3px;
+text-transform: uppercase;
+padding: 4px 12px;
+border-radius: 20px;
+margin-bottom: 8px;
+}
+.header h1 {
+font-family: ‘Playfair Display’, serif;
+font-size: 28px;
+font-weight: 900;
+color: var(–gold);
+line-height: 1.1;
+text-shadow: 0 2px 12px rgba(244,192,75,0.3);
+}
+.header h1 span { color: var(–cream); }
+.castle-icon { font-size: 28px; margin-bottom: 4px; display: block; }
+
+/* ── SETUP SCREEN ── */
+#setup-screen { padding: 30px 20px; }
+.setup-card {
+background: rgba(255,255,255,0.04);
+border: 1px solid rgba(244,192,75,0.25);
+border-radius: 16px;
+padding: 28px 24px;
+margin-bottom: 16px;
+}
+.setup-card h2 {
+font-family: ‘Playfair Display’, serif;
+font-size: 20px;
+color: var(–gold);
+margin-bottom: 6px;
+}
+.setup-card p { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 18px; line-height: 1.5; }
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(–gold); margin-bottom: 6px; }
+.input-group input {
+width: 100%;
+background: rgba(255,255,255,0.07);
+border: 1px solid rgba(244,192,75,0.3);
+border-radius: 10px;
+padding: 12px 16px;
+color: var(–cream);
+font-size: 15px;
+font-family: ‘DM Sans’, sans-serif;
+outline: none;
+transition: border-color 0.2s;
+}
+.input-group input:focus { border-color: var(–gold); }
+.input-group input::placeholder { color: rgba(255,255,255,0.25); }
+
+.btn {
+width: 100%;
+padding: 14px;
+border: none;
+border-radius: 12px;
+font-family: ‘DM Sans’, sans-serif;
+font-size: 15px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.2s;
+letter-spacing: 0.3px;
+}
+.btn-primary {
+background: linear-gradient(135deg, var(–gold), var(–gold-dark));
+color: var(–navy);
+}
+.btn-primary:active { transform: scale(0.97); }
+.btn-secondary {
+background: rgba(255,255,255,0.08);
+color: var(–cream);
+border: 1px solid rgba(255,255,255,0.15);
+margin-top: 10px;
+}
+
+.divider { text-align: center; color: rgba(255,255,255,0.25); font-size: 12px; margin: 18px 0; letter-spacing: 2px; }
+
+.room-code-display {
+background: rgba(244,192,75,0.1);
+border: 2px dashed var(–gold);
+border-radius: 12px;
+padding: 16px;
+text-align: center;
+margin-top: 14px;
+}
+.room-code-display .code {
+font-family: ‘Playfair Display’, serif;
+font-size: 36px;
+font-weight: 900;
+color: var(–gold);
+letter-spacing: 8px;
+}
+.room-code-display .label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 4px; }
+
+/* ── GAME SCREEN ── */
+#game-screen { display: none; }
+
+/* SCOREBOARD */
+.scoreboard {
+background: rgba(255,255,255,0.03);
+border-bottom: 1px solid rgba(244,192,75,0.15);
+padding: 14px 16px 12px;
+}
+.scoreboard-title { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 10px; }
+.players-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.player-score {
+flex: 1; min-width: 80px;
+background: rgba(255,255,255,0.05);
+border: 1px solid rgba(255,255,255,0.1);
+border-radius: 10px;
+padding: 8px 10px;
+text-align: center;
+transition: all 0.4s;
+}
+.player-score.is-me { border-color: rgba(244,192,75,0.5); background: rgba(244,192,75,0.08); }
+.player-score.leading { border-color: var(–gold); background: rgba(244,192,75,0.12); box-shadow: 0 0 12px rgba(244,192,75,0.15); }
+.player-score .p-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player-score .p-pts { font-family: ‘Playfair Display’, serif; font-size: 22px; color: var(–gold); line-height: 1; }
+.player-score .p-stamps { font-size: 10px; color: rgba(255,255,255,0.35); }
+.crown { font-size: 12px; }
+
+/* MY STATS */
+.my-stats {
+display: flex;
+gap: 0;
+border-bottom: 1px solid rgba(244,192,75,0.12);
+}
+.stat-box {
+flex: 1;
+padding: 12px 10px;
+text-align: center;
+border-right: 1px solid rgba(255,255,255,0.06);
+}
+.stat-box:last-child { border-right: none; }
+.stat-box .stat-val { font-family: ‘Playfair Display’, serif; font-size: 26px; color: var(–gold); }
+.stat-box .stat-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+/* ADD STAMP */
+.add-section { padding: 16px 16px 10px; }
+.add-section h3 {
+font-family: ‘Playfair Display’, serif;
+font-size: 17px;
+color: var(–gold);
+margin-bottom: 14px;
+}
+
+.form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.form-row .input-group { flex: 1; margin-bottom: 0; }
+.input-group input.sm { padding: 10px 12px; font-size: 14px; }
+
+.point-hint {
+font-size: 11px;
+color: rgba(255,255,255,0.35);
+margin-bottom: 12px;
+line-height: 1.6;
+}
+.point-hint span { color: var(–gold); font-weight: 600; }
+
+/* MICKEY BONUS CELEBRATION */
+.mickey-blast {
+position: fixed; inset: 0;
+display: flex; flex-direction: column;
+align-items: center; justify-content: center;
+background: rgba(10,5,30,0.92);
+z-index: 200;
+opacity: 0;
+pointer-events: none;
+transition: opacity 0.3s;
+}
+.mickey-blast.show { opacity: 1; pointer-events: all; }
+.mickey-blast .mb-ears { font-size: 80px; animation: mickeySpin 0.6s ease-out; }
+.mickey-blast .mb-title {
+font-family: ‘Playfair Display’, serif;
+font-size: 36px;
+color: var(–gold);
+text-shadow: 0 0 30px rgba(244,192,75,0.8);
+margin: 10px 0 4px;
+animation: mickeyPop 0.5s 0.1s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.mickey-blast .mb-sub { font-size: 16px; color: var(–cream); opacity: 0.8; }
+.mickey-blast .mb-pts {
+font-family: ‘Playfair Display’, serif;
+font-size: 64px; font-weight: 900;
+color: var(–gold);
+text-shadow: 0 0 40px rgba(244,192,75,0.9);
+animation: mickeyPop 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.mickey-blast .mb-tap { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; letter-spacing: 2px; text-transform: uppercase; }
+@keyframes mickeySpin { from { transform: rotate(-30deg) scale(0); } to { transform: rotate(0deg) scale(1); } }
+@keyframes mickeyPop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+
+/* STAMPS GRID */
+.stamps-section { padding: 6px 16px 16px; }
+.stamps-section h3 {
+font-family: ‘Playfair Display’, serif;
+font-size: 17px;
+color: var(–gold);
+margin-bottom: 14px;
+}
+.stamps-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 10px;
+}
+.stamp {
+aspect-ratio: 1;
+border-radius: 10px;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+padding: 8px 6px;
+text-align: center;
+position: relative;
+overflow: hidden;
+animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes stampIn {
+from { opacity: 0; transform: scale(0.5) rotate(-8deg); }
+to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.stamp::before {
+content: ‘’;
+position: absolute; inset: 3px;
+border: 1.5px dashed rgba(255,255,255,0.3);
+border-radius: 7px;
+pointer-events: none;
+}
+.stamp.intl { background: linear-gradient(135deg, var(–stamp-blue), #0D3060); }
+.stamp.terr { background: linear-gradient(135deg, var(–stamp-purple), #3A1A5E); }
+.stamp.us-special { background: linear-gradient(135deg, #8A5A1B, #5E3A0D); }
+.stamp.us { background: linear-gradient(135deg, var(–stamp-green), #1A4030); }
+.stamp .stamp-flag { font-size: 22px; margin-bottom: 2px; }
+.stamp .stamp-name { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.2; }
+.stamp .stamp-loc { font-size: 8px; color: rgba(255,255,255,0.5); margin-top: 1px; }
+.stamp .stamp-pts { position: absolute; top: 5px; right: 6px; font-size: 8px; font-weight: 700; color: var(–gold); }
+.stamp .stamp-dist { font-size: 8px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.stamp.mickey-stamp { background: linear-gradient(135deg, #8B1A1A, #4A0A0A); border: 2px solid var(–gold); }
+.stamp.mickey-stamp::before { border-color: rgba(244,192,75,0.6); }
+
+.empty-stamps {
+grid-column: 1/-1;
+text-align: center;
+padding: 40px 20px;
+color: rgba(255,255,255,0.2);
+font-size: 13px;
+}
+.empty-stamps .big { font-size: 40px; display: block; margin-bottom: 10px; }
+
+/* BOTTOM NAV */
+.bottom-bar {
+position: fixed;
+bottom: 0; left: 50%;
+transform: translateX(-50%);
+width: 100%; max-width: 480px;
+background: rgba(13,27,62,0.95);
+backdrop-filter: blur(12px);
+border-top: 1px solid rgba(244,192,75,0.2);
+padding: 10px 16px 24px;
+display: flex;
+gap: 10px;
+}
+.room-pill {
+background: rgba(255,255,255,0.06);
+border: 1px solid rgba(255,255,255,0.1);
+border-radius: 8px;
+padding: 10px 12px;
+font-size: 11px;
+color: rgba(255,255,255,0.4);
+white-space: nowrap;
+}
+.room-pill span { color: var(–gold); font-weight: 700; letter-spacing: 2px; }
+
+/* TOAST */
+.toast {
+position: fixed;
+bottom: 90px; left: 50%;
+transform: translateX(-50%) translateY(20px);
+background: var(–navy-light);
+border: 1px solid var(–gold);
+border-radius: 12px;
+padding: 12px 20px;
+font-size: 13px;
+font-weight: 500;
+color: var(–cream);
+opacity: 0;
+transition: all 0.3s;
+z-index: 100;
+white-space: nowrap;
+pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* FIREBASE WARNING */
+.firebase-setup {
+background: rgba(212,33,61,0.1);
+border: 1px solid rgba(212,33,61,0.3);
+border-radius: 12px;
+padding: 16px;
+margin: 0 16px 16px;
+font-size: 12px;
+line-height: 1.6;
+color: rgba(255,255,255,0.7);
+}
+.firebase-setup strong { color: var(–gold); display: block; margin-bottom: 4px; }
+.firebase-setup code {
+display: block;
+background: rgba(0,0,0,0.3);
+border-radius: 6px;
+padding: 8px 10px;
+font-size: 11px;
+color: #7EC8E3;
+margin-top: 8px;
+word-break: break-all;
+}
+
+.loading { text-align: center; padding: 30px; color: rgba(255,255,255,0.3); font-size: 14px; }
+
+@media (max-height: 700px) {
+.header { padding: 16px 20px 14px; }
+.header h1 { font-size: 22px; }
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+
+  <div class="header">
+    <span class="castle-icon">🏰</span>
+    <div class="header-badge">Walt Disney World</div>
+    <h1>Passport <span>Collector</span></h1>
+  </div>
+
+  <!-- SETUP SCREEN -->
+
+  <div id="setup-screen">
+    <div style="height:20px"></div>
+
+```
+<div class="setup-card">
+  <h2>Create a Game</h2>
+  <p>Start a new room — share the code with others so they can join and compete!</p>
+  <div class="input-group">
+    <label>Your Name</label>
+    <input type="text" id="create-name" placeholder="e.g. Team Mickey" maxlength="20">
+  </div>
+  <button class="btn btn-primary" onclick="createRoom()">✨ Create New Game</button>
+
+  <div id="room-created" style="display:none">
+    <div class="room-code-display">
+      <div class="code" id="display-code"></div>
+      <div class="label">Share this code with other phones</div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="enterGame()">▶ Enter Game</button>
+  </div>
+</div>
+
+<div class="divider">— or —</div>
+
+<div class="setup-card">
+  <h2>Join a Game</h2>
+  <p>Got a room code? Enter it below to join an existing game.</p>
+  <div class="input-group">
+    <label>Your Name</label>
+    <input type="text" id="join-name" placeholder="e.g. Team Minnie" maxlength="20">
+  </div>
+  <div class="input-group">
+    <label>Room Code</label>
+    <input type="text" id="join-code" placeholder="e.g. CASTLE" maxlength="8" style="text-transform:uppercase;letter-spacing:4px;font-size:18px">
+  </div>
+  <button class="btn btn-primary" onclick="joinRoom()">🎪 Join Game</button>
+</div>
+
+<div class="firebase-setup" id="firebase-notice">
+  <strong>⚡ Quick Setup Required</strong>
+  This game uses Firebase for real-time sync between phones. You need to add your free Firebase config below.<br><br>
+  1. Go to <strong style="color:#7EC8E3">console.firebase.google.com</strong><br>
+  2. Create a project → Add Web App<br>
+  3. Copy your config and replace the placeholder below in the HTML file:
+  <code>// PASTE YOUR FIREBASE CONFIG HERE (replace the firebaseConfig object below)</code>
+</div>
+```
+
+  </div>
+
+  <!-- GAME SCREEN -->
+
+  <div id="game-screen">
+
+```
+<!-- Scoreboard -->
+<div class="scoreboard">
+  <div class="scoreboard-title">🏆 Leaderboard</div>
+  <div class="players-list" id="players-list">
+    <div class="loading">Connecting…</div>
+  </div>
+</div>
+
+<!-- My stats -->
+<div class="my-stats">
+  <div class="stat-box">
+    <div class="stat-val" id="my-points">0</div>
+    <div class="stat-label">My Points</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val" id="my-stamps">0</div>
+    <div class="stat-label">Stamps</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val" id="my-countries">0</div>
+    <div class="stat-label">Countries</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val" id="my-states">0</div>
+    <div class="stat-label">US States</div>
+  </div>
+</div>
+
+<!-- Add Stamp Form -->
+<div class="add-section">
+  <h3>📖 Stamp a New Passport</h3>
+  <div class="form-row">
+    <div class="input-group">
+      <label>Person's Name</label>
+      <input type="text" id="person-name" class="sm" placeholder="e.g. Sarah" maxlength="20">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="input-group">
+      <label>Country</label>
+      <input type="text" id="person-country" class="sm" placeholder="e.g. France" maxlength="30">
+    </div>
+    <div class="input-group">
+      <label>US State (if USA)</label>
+      <input type="text" id="person-state" class="sm" placeholder="e.g. Texas" maxlength="20">
+    </div>
+  </div>
+  <div class="point-hint">
+    📍 Points = distance from Walt Disney World!<br>
+    🗺 Nearby (FL) ≈ <span>1–5 pts</span> &nbsp;|&nbsp; 🌎 Far US state ≈ <span>20–30 pts</span><br>
+    ✈️ International ≈ <span>50–500 pts</span> &nbsp;|&nbsp; 🐭 Mickey name = <span>BONUS!</span>
+  </div>
+  <button class="btn btn-primary" onclick="addStamp()">🌟 Add Stamp!</button>
+</div>
+
+<!-- Stamps Grid -->
+<div class="stamps-section">
+  <h3>🗺 My Collection</h3>
+  <div class="stamps-grid" id="stamps-grid">
+    <div class="empty-stamps">
+      <span class="big">✈️</span>
+      Ask someone where they're from to earn your first stamp!
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+</div>
+
+<!-- Bottom bar (game only) -->
+
+<div class="bottom-bar" id="bottom-bar" style="display:none">
+  <div class="room-pill">Room: <span id="bar-code"></span></div>
+  <div class="room-pill">You: <span id="bar-name" style="color:var(--cream)"></span></div>
+  <button class="btn btn-secondary" style="margin:0;padding:10px 12px;font-size:12px;flex:1" onclick="leaveGame()">Leave</button>
+</div>
+
+<!-- Mickey Bonus Overlay -->
+
+<div class="mickey-blast" id="mickey-blast" onclick="document.getElementById('mickey-blast').classList.remove('show')">
+  <div class="mb-ears">🐭</div>
+  <div class="mb-title">MICKEY BONUS!</div>
+  <div class="mb-sub" id="mb-name-display"></div>
+  <div class="mb-pts" id="mb-pts-display"></div>
+  <div class="mb-tap">tap to continue</div>
+</div>
+
+<!-- Toast -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ============================================================
+  FIREBASE SDK
+  ============================================================ -->
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, set, push, onValue, update, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  // ╔══════════════════════════════════════════════════════════╗
+  // ║  PASTE YOUR FIREBASE CONFIG HERE                        ║
+  // ║  Get it from console.firebase.google.com                ║
+  // ║  Project Settings → Your Apps → Web App → Config        ║
+  // ╚══════════════════════════════════════════════════════════╝
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // ── STATE ──
+  let myName = '';
+  let myId = null;
+  let roomCode = '';
+  let myStamps = [];
+  let unsubscribePlayers = null;
+
+  // ── HELPERS ──
+  window.showToast = function(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function randomCode() {
+    const words = ['CASTLE','MICKEY','MAGIC','EPCOT','PIXAR','SPLASH','NEMO','ELSA','GOOFY','WOODY','BUZZ','BELLE'];
+    return words[Math.floor(Math.random() * words.length)];
+  }
+
+  // ── DISTANCE SCORING ──
+  // Walt Disney World coordinates (Magic Kingdom)
+  const WDW_LAT = 28.3772;
+  const WDW_LNG = -81.5707;
+  const MICKEY_BONUS = 50;
+  const MICKEY_NAMES = ['mickey','minnie','walt','donald','goofy','pluto','daisy','chip','dale','buzz','woody','elsa','anna','moana','ariel','belle','jasmine','mulan','tiana','rapunzel','aurora','cinderella','snow'];
+
+  // Approximate centroids for US states (lat/lng)
+  const STATE_COORDS = {
+    'alabama':[32.8,-86.8],'alaska':[64.2,-153.4],'arizona':[34.3,-111.1],'arkansas':[34.8,-92.2],
+    'california':[36.8,-119.4],'colorado':[39.0,-105.5],'connecticut':[41.6,-72.7],'delaware':[38.9,-75.5],
+    'florida':[27.8,-81.6],'georgia':[32.2,-83.4],'hawaii':[20.3,-156.3],'idaho':[44.4,-114.6],
+    'illinois':[40.0,-89.2],'indiana':[39.9,-86.3],'iowa':[42.0,-93.5],'kansas':[38.5,-98.4],
+    'kentucky':[37.7,-84.9],'louisiana':[31.2,-91.8],'maine':[45.4,-69.0],'maryland':[39.1,-76.8],
+    'massachusetts':[42.3,-71.8],'michigan':[44.3,-85.4],'minnesota':[46.4,-93.1],'mississippi':[32.7,-89.7],
+    'missouri':[38.4,-92.5],'montana':[47.0,-109.6],'nebraska':[41.5,-99.9],'nevada':[38.5,-117.2],
+    'new hampshire':[43.7,-71.6],'new jersey':[40.1,-74.5],'new mexico':[34.5,-106.2],'new york':[42.9,-75.5],
+    'north carolina':[35.6,-79.8],'north dakota':[47.5,-100.5],'ohio':[40.4,-82.8],'oklahoma':[35.6,-96.9],
+    'oregon':[43.9,-120.6],'pennsylvania':[40.6,-77.2],'rhode island':[41.7,-71.5],'south carolina':[33.9,-80.9],
+    'south dakota':[44.4,-100.2],'tennessee':[35.9,-86.7],'texas':[31.1,-97.6],'utah':[39.3,-111.1],
+    'vermont':[44.0,-72.7],'virginia':[37.8,-78.2],'washington':[47.4,-120.5],'west virginia':[38.6,-80.6],
+    'wisconsin':[44.3,-89.6],'wyoming':[43.0,-107.6],'district of columbia':[38.9,-77.0],'dc':[38.9,-77.0],
+    'puerto rico':[18.2,-66.6],'guam':[13.4,144.8],'us virgin islands':[18.3,-64.9],
+    'american samoa':[-14.3,-170.7],'northern mariana islands':[15.1,145.7]
+  };
+
+  // Approximate centroids for countries
+  const COUNTRY_COORDS = {
+    'canada':[56.1,-106.3],'mexico':[23.6,-102.6],'uk':[55.4,-3.4],'united kingdom':[55.4,-3.4],
+    'great britain':[55.4,-3.4],'england':[52.4,-1.9],'scotland':[56.8,-4.2],'wales':[52.3,-3.8],
+    'ireland':[53.4,-8.2],'australia':[-25.3,133.8],'new zealand':[-40.9,174.9],'japan':[36.2,138.3],
+    'china':[35.9,104.2],'india':[20.6,78.9],'brazil':[-14.2,-51.9],'france':[46.2,2.2],
+    'germany':[51.2,10.4],'italy':[41.9,12.6],'spain':[40.5,-3.7],'portugal':[39.4,-8.2],
+    'netherlands':[52.1,5.3],'belgium':[50.5,4.5],'switzerland':[46.8,8.2],'austria':[47.5,14.6],
+    'sweden':[60.1,18.6],'norway':[64.6,17.9],'denmark':[56.3,9.5],'finland':[61.9,25.7],
+    'poland':[51.9,19.1],'ukraine':[48.4,31.2],'czech republic':[49.8,15.5],'hungary':[47.2,19.5],
+    'romania':[45.9,24.9],'greece':[39.1,22.0],'turkey':[38.9,35.2],'russia':[61.5,105.3],
+    'israel':[31.0,34.9],'saudi arabia':[23.9,45.1],'uae':[23.4,53.8],'united arab emirates':[23.4,53.8],
+    'egypt':[26.8,30.8],'south africa':[-30.6,22.9],'nigeria':[9.1,8.7],'kenya':[0.0,37.9],
+    'argentina':[-38.4,-63.6],'colombia':[4.6,-74.1],'chile':[-35.7,-71.5],'peru':[-9.2,-75.0],
+    'venezuela':[6.4,-66.6],'south korea':[35.9,127.8],'north korea':[40.3,127.5],
+    'indonesia':[-0.8,113.9],'philippines':[12.9,121.8],'vietnam':[14.1,108.3],'thailand':[15.9,100.9],
+    'malaysia':[4.2,109.5],'singapore':[1.3,103.8],'bangladesh':[23.7,90.4],'pakistan':[30.4,69.3],
+    'iran':[32.4,53.7],'iraq':[33.2,43.7],'morocco':[31.8,-7.1],'ethiopia':[9.1,40.5],
+    'ghana':[7.9,-1.0],'tanzania':[-6.4,34.9],'cuba':[21.5,-79.5],'jamaica':[18.1,-77.3],
+    'haiti':[18.9,-72.7],'dominican republic':[18.7,-70.2],'trinidad':[10.7,-61.2],
+    'bahamas':[25.0,-77.4],'barbados':[13.2,-59.6],'panama':[8.5,-80.8],'costa rica':[9.7,-83.8],
+    'guatemala':[15.8,-90.2],'honduras':[15.2,-86.2],'el salvador':[13.8,-88.9],'nicaragua':[12.9,-85.2],
+  };
+
+  function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2-lat1) * Math.PI/180;
+    const dLng = (lng2-lng1) * Math.PI/180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function kmToMiles(km) { return Math.round(km * 0.621371); }
+
+  function distanceFromWDW(stamp) {
+    const c = stamp.country.toLowerCase();
+    const s = (stamp.state || '').toLowerCase();
+    const isUSA = c === 'usa' || c === 'united states' || c === 'us';
+
+    if (isUSA && s && STATE_COORDS[s]) {
+      const [lat, lng] = STATE_COORDS[s];
+      return haversineKm(WDW_LAT, WDW_LNG, lat, lng);
+    }
+    if (!isUSA && COUNTRY_COORDS[c]) {
+      const [lat, lng] = COUNTRY_COORDS[c];
+      return haversineKm(WDW_LAT, WDW_LNG, lat, lng);
+    }
+    // Unknown location — give a reasonable guess
+    if (!isUSA) return 5000; // assume overseas
+    return 1000; // assume mid-US if state not recognized
+  }
+
+  function calcDistancePoints(km) {
+    // Scale: every 100km = 1 point, minimum 1
+    return Math.max(1, Math.round(km / 100));
+  }
+
+  function isMickeyName(name) {
+    return MICKEY_NAMES.includes(name.toLowerCase().trim());
+  }
+
+  function calcPoints(stamp) {
+    const km = distanceFromWDW(stamp);
+    return calcDistancePoints(km);
+  }
+
+  function getDistanceLabel(stamp) {
+    const km = distanceFromWDW(stamp);
+    const miles = kmToMiles(km);
+    if (miles < 50) return `${miles} mi away`;
+    if (miles < 500) return `${miles} mi`;
+    if (miles < 2000) return `${miles} mi away`;
+    return `${miles.toLocaleString()} mi`;
+  }
+
+  function getStampClass(stamp) {
+    const km = distanceFromWDW(stamp);
+    if (km < 500) return 'us';
+    if (km < 2500) return 'us-special';
+    if (km < 6000) return 'terr';
+    return 'intl';
+  }
+
+  function getFlag(stamp) {
+    const c = stamp.country.toLowerCase();
+    if (c === 'usa' || c === 'united states' || c === 'us') return '🇺🇸';
+    const flags = {
+      'canada':'🇨🇦','mexico':'🇲🇽','uk':'🇬🇧','united kingdom':'🇬🇧','great britain':'🇬🇧',
+      'england':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','wales':'🏴󠁧󠁢󠁷󠁬󠁳󠁿','ireland':'🇮🇪',
+      'australia':'🇦🇺','new zealand':'🇳🇿','japan':'🇯🇵','china':'🇨🇳','brazil':'🇧🇷',
+      'india':'🇮🇳','france':'🇫🇷','germany':'🇩🇪','italy':'🇮🇹','spain':'🇪🇸',
+      'portugal':'🇵🇹','netherlands':'🇳🇱','belgium':'🇧🇪','switzerland':'🇨🇭','austria':'🇦🇹',
+      'sweden':'🇸🇪','norway':'🇳🇴','denmark':'🇩🇰','finland':'🇫🇮','poland':'🇵🇱',
+      'ukraine':'🇺🇦','czech republic':'🇨🇿','hungary':'🇭🇺','romania':'🇷🇴','greece':'🇬🇷',
+      'turkey':'🇹🇷','russia':'🇷🇺','israel':'🇮🇱','saudi arabia':'🇸🇦','uae':'🇦🇪',
+      'united arab emirates':'🇦🇪','egypt':'🇪🇬','south africa':'🇿🇦','nigeria':'🇳🇬',
+      'kenya':'🇰🇪','south korea':'🇰🇷','indonesia':'🇮🇩','philippines':'🇵🇭','vietnam':'🇻🇳',
+      'thailand':'🇹🇭','malaysia':'🇲🇾','singapore':'🇸🇬','cuba':'🇨🇺','jamaica':'🇯🇲',
+      'argentina':'🇦🇷','colombia':'🇨🇴','chile':'🇨🇱','peru':'🇵🇪','venezuela':'🇻🇪',
+      'costa rica':'🇨🇷','panama':'🇵🇦','bahamas':'🇧🇸','barbados':'🇧🇧',
+    };
+    return flags[c] || '🌍';
+  }
+
+  function showMickeyBlast(name, bonusPts) {
+    document.getElementById('mb-name-display').textContent = `${name} triggered the bonus!`;
+    document.getElementById('mb-pts-display').textContent = `+${bonusPts} pts`;
+    document.getElementById('mickey-blast').classList.add('show');
+  }
+
+  // ── ROOM CREATION ──
+  window.createRoom = async function() {
+    const name = document.getElementById('create-name').value.trim();
+    if (!name) { showToast('Enter your name first!'); return; }
+    myName = name;
+    roomCode = randomCode();
+    const snap = await get(ref(db, `rooms/${roomCode}`));
+    if (snap.exists()) roomCode = randomCode() + Math.floor(Math.random()*9);
+    document.getElementById('display-code').textContent = roomCode;
+    document.getElementById('room-created').style.display = 'block';
+  }
+
+  window.enterGame = async function() {
+    const name = document.getElementById('create-name').value.trim();
+    if (!name) return;
+    myName = name;
+    const playerRef = push(ref(db, `rooms/${roomCode}/players`));
+    myId = playerRef.key;
+    await set(playerRef, { name: myName, points: 0, stamps: 0, countries: 0, states: 0 });
+    startGame();
+  }
+
+  window.joinRoom = async function() {
+    const name = document.getElementById('join-name').value.trim();
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    if (!name) { showToast('Enter your name!'); return; }
+    if (!code) { showToast('Enter a room code!'); return; }
+    const snap = await get(ref(db, `rooms/${code}`));
+    if (!snap.exists()) { showToast('Room not found! Check the code.'); return; }
+    myName = name;
+    roomCode = code;
+    const playerRef = push(ref(db, `rooms/${roomCode}/players`));
+    myId = playerRef.key;
+    await set(playerRef, { name: myName, points: 0, stamps: 0, countries: 0, states: 0 });
+    startGame();
+  }
+
+  function startGame() {
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('bottom-bar').style.display = 'flex';
+    document.getElementById('bar-code').textContent = roomCode;
+    document.getElementById('bar-name').textContent = myName;
+    subscribeToPlayers();
+  }
+
+  function subscribeToPlayers() {
+    const playersRef = ref(db, `rooms/${roomCode}/players`);
+    onValue(playersRef, (snap) => {
+      const data = snap.val() || {};
+      renderPlayers(data);
+    });
+  }
+
+  function renderPlayers(data) {
+    const list = Object.entries(data).map(([id, p]) => ({ id, ...p }));
+    list.sort((a,b) => (b.points||0) - (a.points||0));
+    const maxPts = list[0]?.points || 0;
+    const container = document.getElementById('players-list');
+    container.innerHTML = list.map((p, i) => {
+      const isMe = p.id === myId;
+      const isLeading = p.points > 0 && p.points === maxPts;
+      return `<div class="player-score ${isMe?'is-me':''} ${isLeading?'leading':''}">
+        <div class="p-name">${isLeading && i===0 ? '👑 ' : ''}${p.name}</div>
+        <div class="p-pts">${p.points||0}</div>
+        <div class="p-stamps">${p.stamps||0} stamps</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.addStamp = async function() {
+    const name = document.getElementById('person-name').value.trim();
+    const country = document.getElementById('person-country').value.trim();
+    const state = document.getElementById('person-state').value.trim();
+    if (!name || !country) { showToast('Need a name and country!'); return; }
+
+    const stamp = { name, country, state, ts: Date.now() };
+    const distPts = calcPoints(stamp);
+    const mickey = isMickeyName(name);
+    const totalStampPts = distPts + (mickey ? MICKEY_BONUS : 0);
+    stamp.pts = totalStampPts;
+    stamp.distPts = distPts;
+    stamp.mickey = mickey;
+    myStamps.push(stamp);
+
+    // Update Firebase
+    const playerRef = ref(db, `rooms/${roomCode}/players/${myId}`);
+    const snap = await get(playerRef);
+    const cur = snap.val() || {};
+    const c = country.toLowerCase();
+    const isUSA = c === 'usa' || c === 'united states' || c === 'us';
+    const newCountries = myStamps.filter(s => {
+      const sc = s.country.toLowerCase();
+      return sc !== 'usa' && sc !== 'united states' && sc !== 'us';
+    }).length;
+    const newStates = myStamps.filter(s => {
+      const sc = s.country.toLowerCase();
+      return (sc === 'usa' || sc === 'united states' || sc === 'us') && s.state;
+    }).length;
+    const totalPts = myStamps.reduce((sum, s) => sum + (s.pts || 0), 0);
+
+    await update(playerRef, {
+      points: totalPts,
+      stamps: myStamps.length,
+      countries: newCountries,
+      states: newStates
+    });
+
+    // Update my stats display
+    document.getElementById('my-stamps').textContent = myStamps.length;
+    document.getElementById('my-countries').textContent = newCountries;
+    document.getElementById('my-states').textContent = newStates;
+    document.getElementById('my-points').textContent = totalPts;
+
+    renderMyStamps();
+
+    // Clear form
+    document.getElementById('person-name').value = '';
+    document.getElementById('person-country').value = '';
+    document.getElementById('person-state').value = '';
+
+    if (mickey) {
+      setTimeout(() => showMickeyBlast(name, totalStampPts), 200);
+    } else {
+      const distLabel = getDistanceLabel(stamp);
+      showToast(`+${distPts} pts — 📍 ${distLabel} from Disney!`);
+    }
+  }
+
+  function renderMyStamps() {
+    const grid = document.getElementById('stamps-grid');
+    if (myStamps.length === 0) {
+      grid.innerHTML = `<div class="empty-stamps"><span class="big">✈️</span>Ask someone where they're from to earn your first stamp!</div>`;
+      return;
+    }
+    grid.innerHTML = [...myStamps].reverse().map(s => {
+      const cls = s.mickey ? 'mickey-stamp' : getStampClass(s);
+      const flag = s.mickey ? '🐭' : getFlag(s);
+      const loc = s.state ? `${s.state}, ${s.country}` : s.country;
+      const dist = s.mickey ? 'Mickey Bonus!' : getDistanceLabel(s);
+      return `<div class="stamp ${cls}">
+        <div class="stamp-pts">+${s.pts}</div>
+        <div class="stamp-flag">${flag}</div>
+        <div class="stamp-name">${s.name}</div>
+        <div class="stamp-loc">${loc}</div>
+        <div class="stamp-dist">${dist}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.leaveGame = function() {
+    if (confirm('Leave this game?')) {
+      location.reload();
+    }
+  }
+</script>
+
+</body>
+</html>
