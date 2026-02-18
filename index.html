@@ -6,6 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Disney Passport Collector</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- Firebase COMPAT SDK - works on all browsers including iOS Safari -->
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
 <style>
 :root {
   --gold: #F4C04B;
@@ -30,304 +37,260 @@ body::before {
     radial-gradient(ellipse at 80% 90%, rgba(212,33,61,0.08) 0%, transparent 50%);
   pointer-events: none; z-index: 0;
 }
-.app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 110px; }
+.app {
+  position: relative; z-index: 1;
+  max-width: 480px; margin: 0 auto; padding: 0 0 110px;
+}
 
 /* HEADER */
 .header {
-text-align: center;
-padding: 28px 20px 20px;
-border-bottom: 1px solid rgba(244,192,75,0.2);
+  text-align: center;
+  padding: 28px 20px 20px;
+  border-bottom: 1px solid rgba(244,192,75,0.2);
 }
 .header-badge {
-display: inline-block;
-background: var(–gold);
-color: var(–navy);
-font-size: 9px;
-font-weight: 600;
-letter-spacing: 3px;
-text-transform: uppercase;
-padding: 4px 12px;
-border-radius: 20px;
-margin-bottom: 8px;
+  display: inline-block;
+  background: var(--gold);
+  color: var(--navy);
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 3px; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 20px; margin-bottom: 8px;
 }
 .header h1 {
-font-family: ‘Playfair Display’, serif;
-font-size: 26px;
-font-weight: 900;
-color: var(–gold);
-line-height: 1.1;
+  font-family: 'Playfair Display', serif;
+  font-size: 26px; font-weight: 900;
+  color: var(--gold); line-height: 1.1;
 }
-.header h1 span { color: var(–cream); }
+.header h1 span { color: var(--cream); }
 .castle-icon { font-size: 26px; margin-bottom: 4px; display: block; }
 
 /* SETUP */
 #setup-screen { padding: 24px 16px; }
 .setup-card {
-background: rgba(255,255,255,0.04);
-border: 1px solid rgba(244,192,75,0.25);
-border-radius: 16px;
-padding: 24px;
-margin-bottom: 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(244,192,75,0.25);
+  border-radius: 16px; padding: 24px; margin-bottom: 16px;
 }
 .setup-card h2 {
-font-family: ‘Playfair Display’, serif;
-font-size: 20px;
-color: var(–gold);
-margin-bottom: 6px;
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: var(--gold); margin-bottom: 6px;
 }
-.setup-card p { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 18px; line-height: 1.5; }
+.setup-card p {
+  font-size: 13px; color: rgba(255,255,255,0.55);
+  margin-bottom: 18px; line-height: 1.5;
+}
 .input-group { margin-bottom: 12px; }
 .input-group label {
-display: block;
-font-size: 11px;
-font-weight: 600;
-letter-spacing: 1.5px;
-text-transform: uppercase;
-color: var(–gold);
-margin-bottom: 6px;
+  display: block; font-size: 11px; font-weight: 600;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 6px;
 }
 .input-group input {
-width: 100%;
-background: rgba(255,255,255,0.07);
-border: 1px solid rgba(244,192,75,0.3);
-border-radius: 10px;
-padding: 12px 14px;
-color: var(–cream);
-font-size: 15px;
-font-family: ‘DM Sans’, sans-serif;
-outline: none;
-transition: border-color 0.2s;
--webkit-appearance: none;
+  width: 100%;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(244,192,75,0.3);
+  border-radius: 10px; padding: 12px 14px;
+  color: var(--cream); font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none; transition: border-color 0.2s;
+  -webkit-appearance: none; appearance: none;
 }
-.input-group input:focus { border-color: var(–gold); }
+.input-group input:focus { border-color: var(--gold); }
 .input-group input::placeholder { color: rgba(255,255,255,0.25); }
-.input-sm { padding: 10px 12px !important; font-size: 14px !important; }
+.input-sm { padding: 10px 12px; font-size: 14px; }
 
 .btn {
-width: 100%;
-padding: 14px;
-border: none;
-border-radius: 12px;
-font-family: ‘DM Sans’, sans-serif;
-font-size: 15px;
-font-weight: 600;
-cursor: pointer;
-transition: transform 0.15s;
-letter-spacing: 0.3px;
--webkit-appearance: none;
+  display: block; width: 100%; padding: 14px;
+  border: none; border-radius: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.3px;
+  -webkit-appearance: none; appearance: none;
+  transition: opacity 0.15s;
 }
-.btn:active { transform: scale(0.97); }
-.btn-primary { background: linear-gradient(135deg, var(–gold), var(–gold-dark)); color: var(–navy); }
+.btn:active { opacity: 0.8; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: var(--navy);
+}
 .btn-secondary {
-background: rgba(255,255,255,0.08);
-color: var(–cream);
-border: 1px solid rgba(255,255,255,0.15);
-margin-top: 10px;
+  background: rgba(255,255,255,0.08);
+  color: var(--cream);
+  border: 1px solid rgba(255,255,255,0.15);
+  margin-top: 10px;
 }
 
-.divider { text-align: center; color: rgba(255,255,255,0.25); font-size: 12px; margin: 16px 0; letter-spacing: 2px; }
-
-.room-code-display {
-background: rgba(244,192,75,0.1);
-border: 2px dashed var(–gold);
-border-radius: 12px;
-padding: 16px;
-text-align: center;
-margin-top: 14px;
-}
-.room-code-display .code {
-font-family: ‘Playfair Display’, serif;
-font-size: 34px;
-font-weight: 900;
-color: var(–gold);
-letter-spacing: 8px;
-}
-.room-code-display .sublabel {
-font-size: 10px;
-letter-spacing: 2px;
-text-transform: uppercase;
-color: rgba(255,255,255,0.4);
-margin-top: 4px;
+.divider {
+  text-align: center; color: rgba(255,255,255,0.25);
+  font-size: 12px; margin: 16px 0; letter-spacing: 2px;
 }
 
-/* GAME SCREEN */
+.room-code-box {
+  background: rgba(244,192,75,0.1);
+  border: 2px dashed var(--gold);
+  border-radius: 12px; padding: 16px;
+  text-align: center; margin-top: 14px;
+}
+.room-code-box .code {
+  font-family: 'Playfair Display', serif;
+  font-size: 34px; font-weight: 900;
+  color: var(--gold); letter-spacing: 8px;
+}
+.room-code-box .sublabel {
+  font-size: 10px; letter-spacing: 2px;
+  text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 4px;
+}
+
+/* GAME */
 #game-screen { display: none; }
 
 .scoreboard {
-background: rgba(255,255,255,0.03);
-border-bottom: 1px solid rgba(244,192,75,0.15);
-padding: 14px 14px 12px;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(244,192,75,0.15);
+  padding: 14px 14px 12px;
 }
 .scoreboard-title {
-font-size: 9px;
-letter-spacing: 2.5px;
-text-transform: uppercase;
-color: rgba(255,255,255,0.35);
-margin-bottom: 10px;
+  font-size: 9px; letter-spacing: 2.5px;
+  text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 10px;
 }
 .players-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.player-score {
-flex: 1; min-width: 80px;
-background: rgba(255,255,255,0.05);
-border: 1px solid rgba(255,255,255,0.1);
-border-radius: 10px;
-padding: 8px 10px;
-text-align: center;
-transition: all 0.4s;
+.player-card {
+  flex: 1; min-width: 80px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px; padding: 8px 10px;
+  text-align: center; transition: all 0.4s;
 }
-.player-score.is-me { border-color: rgba(244,192,75,0.5); background: rgba(244,192,75,0.08); }
-.player-score.leading { border-color: var(–gold); background: rgba(244,192,75,0.12); box-shadow: 0 0 12px rgba(244,192,75,0.15); }
-.p-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.p-pts { font-family: ‘Playfair Display’, serif; font-size: 22px; color: var(–gold); line-height: 1; }
-.p-stamps { font-size: 10px; color: rgba(255,255,255,0.35); }
+.player-card.is-me { border-color: rgba(244,192,75,0.5); background: rgba(244,192,75,0.08); }
+.player-card.leading { border-color: var(--gold); background: rgba(244,192,75,0.12); box-shadow: 0 0 12px rgba(244,192,75,0.15); }
+.pc-name { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-pts { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); line-height: 1; }
+.pc-stamps { font-size: 10px; color: rgba(255,255,255,0.35); }
 
 .my-stats { display: flex; border-bottom: 1px solid rgba(244,192,75,0.12); }
 .stat-box { flex: 1; padding: 12px 8px; text-align: center; border-right: 1px solid rgba(255,255,255,0.06); }
 .stat-box:last-child { border-right: none; }
-.stat-val { font-family: ‘Playfair Display’, serif; font-size: 24px; color: var(–gold); }
+.stat-val { font-family: 'Playfair Display', serif; font-size: 24px; color: var(--gold); }
 .stat-label { font-size: 9px; letter-spacing: 1.2px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 2px; }
 
 .add-section { padding: 16px 14px 10px; }
-.add-section h3 { font-family: ‘Playfair Display’, serif; font-size: 16px; color: var(–gold); margin-bottom: 14px; }
+.section-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--gold); margin-bottom: 14px; }
 .form-row { display: flex; gap: 10px; margin-bottom: 10px; }
 .form-row .input-group { flex: 1; margin-bottom: 0; }
 .point-hint { font-size: 11px; color: rgba(255,255,255,0.35); margin-bottom: 12px; line-height: 1.6; }
-.point-hint span { color: var(–gold); font-weight: 600; }
+.point-hint span { color: var(--gold); font-weight: 600; }
 
 .stamps-section { padding: 6px 14px 16px; }
-.stamps-section h3 { font-family: ‘Playfair Display’, serif; font-size: 16px; color: var(–gold); margin-bottom: 12px; }
 .stamps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 
 .stamp {
-border-radius: 10px;
-display: flex;
-flex-direction: column;
-align-items: center;
-justify-content: center;
-padding: 8px 6px;
-text-align: center;
-position: relative;
-overflow: hidden;
-min-height: 90px;
-animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 8px 6px; text-align: center;
+  position: relative; overflow: hidden; min-height: 90px;
+  animation: stampIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 @keyframes stampIn {
-from { opacity: 0; transform: scale(0.5) rotate(-8deg); }
-to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  from { opacity: 0; transform: scale(0.5) rotate(-8deg); }
+  to   { opacity: 1; transform: scale(1)   rotate(0deg);  }
 }
 .stamp::before {
-content: ‘’;
-position: absolute; inset: 3px;
-border: 1.5px dashed rgba(255,255,255,0.3);
-border-radius: 7px;
-pointer-events: none;
+  content: ''; position: absolute; inset: 3px;
+  border: 1.5px dashed rgba(255,255,255,0.3);
+  border-radius: 7px; pointer-events: none;
 }
-.stamp-near   { background: linear-gradient(135deg, #2D6A4F, #1A4030); }
-.stamp-mid    { background: linear-gradient(135deg, #8A5A1B, #5E3A0D); }
-.stamp-far    { background: linear-gradient(135deg, #5B2D8A, #3A1A5E); }
-.stamp-intl   { background: linear-gradient(135deg, #1B4F8A, #0D3060); }
-.stamp-mickey { background: linear-gradient(135deg, #8B1A1A, #4A0A0A); border: 2px solid var(–gold); }
-.stamp-mickey::before { border-color: rgba(244,192,75,0.6); }
+.s-near   { background: linear-gradient(135deg, #2D6A4F, #1A4030); }
+.s-mid    { background: linear-gradient(135deg, #8A5A1B, #5E3A0D); }
+.s-far    { background: linear-gradient(135deg, #5B2D8A, #3A1A5E); }
+.s-intl   { background: linear-gradient(135deg, #1B4F8A, #0D3060); }
+.s-mickey { background: linear-gradient(135deg, #8B1A1A, #4A0A0A); border: 2px solid var(--gold); }
+.s-mickey::before { border-color: rgba(244,192,75,0.6); }
 
-.stamp-pts  { position: absolute; top: 5px; right: 6px; font-size: 8px; font-weight: 700; color: var(–gold); }
+.stamp-pts  { position: absolute; top: 5px; right: 6px; font-size: 8px; font-weight: 700; color: var(--gold); }
 .stamp-flag { font-size: 20px; margin-bottom: 2px; }
 .stamp-name { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.9); line-height: 1.2; }
 .stamp-loc  { font-size: 8px; color: rgba(255,255,255,0.5); margin-top: 1px; }
 .stamp-dist { font-size: 8px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 
-.empty-stamps { grid-column: 1 / -1; text-align: center; padding: 36px 20px; color: rgba(255,255,255,0.2); font-size: 13px; }
+.empty-stamps {
+  grid-column: 1 / -1; text-align: center;
+  padding: 36px 20px; color: rgba(255,255,255,0.2); font-size: 13px;
+}
 .empty-big { font-size: 38px; display: block; margin-bottom: 10px; }
 
 /* BOTTOM BAR */
 .bottom-bar {
-position: fixed;
-bottom: 0; left: 50%;
-transform: translateX(-50%);
-width: 100%; max-width: 480px;
-background: rgba(13,27,62,0.96);
-backdrop-filter: blur(12px);
-border-top: 1px solid rgba(244,192,75,0.2);
-padding: 10px 14px 24px;
-display: flex;
-gap: 8px;
+  position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: rgba(13,27,62,0.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(244,192,75,0.2);
+  padding: 10px 14px 24px;
+  display: flex; gap: 8px;
 }
 .room-pill {
-background: rgba(255,255,255,0.06);
-border: 1px solid rgba(255,255,255,0.1);
-border-radius: 8px;
-padding: 10px 10px;
-font-size: 11px;
-color: rgba(255,255,255,0.4);
-white-space: nowrap;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; padding: 10px;
+  font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap;
 }
-.room-pill span { color: var(–gold); font-weight: 700; letter-spacing: 1px; }
+.room-pill span { color: var(--gold); font-weight: 700; letter-spacing: 1px; }
 
 /* TOAST */
 .toast {
-position: fixed;
-bottom: 92px; left: 50%;
-transform: translateX(-50%) translateY(16px);
-background: var(–navy-light);
-border: 1px solid var(–gold);
-border-radius: 12px;
-padding: 12px 20px;
-font-size: 13px;
-font-weight: 500;
-color: var(–cream);
-opacity: 0;
-transition: all 0.3s;
-z-index: 100;
-white-space: nowrap;
-pointer-events: none;
+  position: fixed; bottom: 92px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--navy-light);
+  border: 1px solid var(--gold);
+  border-radius: 12px; padding: 12px 20px;
+  font-size: 13px; font-weight: 500; color: var(--cream);
+  opacity: 0; transition: all 0.3s; z-index: 100;
+  white-space: nowrap; pointer-events: none;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* MICKEY OVERLAY */
 .mickey-blast {
-position: fixed; inset: 0;
-display: flex; flex-direction: column;
-align-items: center; justify-content: center;
-background: rgba(10,5,30,0.93);
-z-index: 200;
-opacity: 0;
-pointer-events: none;
-transition: opacity 0.3s;
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: rgba(10,5,30,0.93);
+  z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s;
 }
 .mickey-blast.show { opacity: 1; pointer-events: all; }
 .mb-ears { font-size: 80px; animation: mickeySpin 0.6s ease-out; }
 .mb-title {
-font-family: ‘Playfair Display’, serif;
-font-size: 34px;
-color: var(–gold);
-text-shadow: 0 0 30px rgba(244,192,75,0.8);
-margin: 10px 0 4px;
+  font-family: 'Playfair Display', serif;
+  font-size: 34px; color: var(--gold);
+  text-shadow: 0 0 30px rgba(244,192,75,0.8); margin: 10px 0 4px;
 }
-.mb-sub { font-size: 15px; color: var(–cream); opacity: 0.8; }
+.mb-sub { font-size: 15px; color: var(--cream); opacity: 0.8; }
 .mb-pts {
-font-family: ‘Playfair Display’, serif;
-font-size: 60px;
-font-weight: 900;
-color: var(–gold);
-text-shadow: 0 0 40px rgba(244,192,75,0.9);
+  font-family: 'Playfair Display', serif;
+  font-size: 60px; font-weight: 900; color: var(--gold);
+  text-shadow: 0 0 40px rgba(244,192,75,0.9);
 }
 .mb-tap { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 20px; letter-spacing: 2px; text-transform: uppercase; }
 @keyframes mickeySpin {
-from { transform: rotate(-30deg) scale(0); }
-to   { transform: rotate(0deg) scale(1); }
+  from { transform: rotate(-30deg) scale(0); }
+  to   { transform: rotate(0deg) scale(1); }
 }
 
-/* FIREBASE NOTICE */
-.firebase-notice {
-background: rgba(212,33,61,0.1);
-border: 1px solid rgba(212,33,61,0.3);
-border-radius: 12px;
-padding: 16px;
-margin-bottom: 16px;
-font-size: 12px;
-line-height: 1.7;
-color: rgba(255,255,255,0.7);
+/* STATUS BOX */
+.status-box {
+  background: rgba(244,192,75,0.08);
+  border: 1px solid rgba(244,192,75,0.25);
+  border-radius: 10px; padding: 12px 14px;
+  font-size: 12px; color: rgba(255,255,255,0.6);
+  margin-bottom: 14px; line-height: 1.5;
 }
-.firebase-notice strong { color: var(–gold); display: block; margin-bottom: 4px; }
+.status-box.error {
+  background: rgba(212,33,61,0.1);
+  border-color: rgba(212,33,61,0.35);
+  color: #ff8fa0;
+}
 </style>
 
 </head>
@@ -341,14 +304,14 @@ color: rgba(255,255,255,0.7);
     <h1>Passport <span>Collector</span></h1>
   </div>
 
-  <!-- SETUP SCREEN -->
+  <!-- SETUP -->
 
   <div id="setup-screen">
-    <div style="height:20px"></div>
+    <div style="height:16px;"></div>
 
-<div class="firebase-notice" id="firebase-notice">
-  <strong>&#9889; Setup Required</strong>
-  Replace the Firebase config near the bottom of this file before deploying.
+```
+<div id="status-box" class="status-box" style="margin:0 0 16px;">
+  Connecting to Firebase...
 </div>
 
 <div class="setup-card">
@@ -356,11 +319,12 @@ color: rgba(255,255,255,0.7);
   <p>Start a new room and share the code with other phones.</p>
   <div class="input-group">
     <label>Your Team Name</label>
-    <input type="text" id="create-name" placeholder="e.g. Team Mickey" maxlength="20" autocomplete="off">
+    <input type="text" id="create-name" placeholder="e.g. Team Mickey"
+      maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <button class="btn btn-primary" id="btn-create" type="button">Create New Game</button>
   <div id="room-created" style="display:none; margin-top:16px;">
-    <div class="room-code-display">
+    <div class="room-code-box">
       <div class="code" id="display-code"></div>
       <div class="sublabel">Share this code with other phones</div>
     </div>
@@ -375,27 +339,30 @@ color: rgba(255,255,255,0.7);
   <p>Got a room code? Enter it to join an existing game.</p>
   <div class="input-group">
     <label>Your Team Name</label>
-    <input type="text" id="join-name" placeholder="e.g. Team Minnie" maxlength="20" autocomplete="off">
+    <input type="text" id="join-name" placeholder="e.g. Team Minnie"
+      maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <div class="input-group">
     <label>Room Code</label>
-    <input type="text" id="join-code" placeholder="e.g. CASTLE" maxlength="8"
-      autocomplete="off" autocorrect="off" autocapitalize="characters"
-      style="letter-spacing:4px; font-size:18px;">
+    <input type="text" id="join-code" placeholder="e.g. CASTLE"
+      maxlength="8" autocomplete="off" autocorrect="off" autocapitalize="characters"
+      spellcheck="false" style="letter-spacing:4px; font-size:18px;">
   </div>
   <button class="btn btn-primary" id="btn-join" type="button">Join Game</button>
 </div>
+```
 
   </div>
 
-  <!-- GAME SCREEN -->
+  <!-- GAME -->
 
   <div id="game-screen">
 
+```
 <div class="scoreboard">
   <div class="scoreboard-title">Leaderboard</div>
   <div class="players-list" id="players-list">
-    <div style="color:rgba(255,255,255,0.3); font-size:13px; padding:4px;">Connecting...</div>
+    <div style="color:rgba(255,255,255,0.3); font-size:13px; padding:4px;">Loading...</div>
   </div>
 </div>
 
@@ -407,19 +374,25 @@ color: rgba(255,255,255,0.7);
 </div>
 
 <div class="add-section">
-  <h3>Stamp a New Passport</h3>
+  <div class="section-title">Stamp a New Passport</div>
   <div class="input-group">
     <label>Person's First Name</label>
-    <input type="text" id="person-name" class="input-sm" placeholder="e.g. Sarah" maxlength="20" autocomplete="off" autocorrect="off">
+    <input type="text" id="person-name" class="input-sm"
+      placeholder="e.g. Sarah" maxlength="20"
+      autocomplete="off" autocorrect="off" spellcheck="false">
   </div>
   <div class="form-row">
     <div class="input-group">
       <label>Country</label>
-      <input type="text" id="person-country" class="input-sm" placeholder="e.g. France" maxlength="30" autocomplete="off" autocorrect="off">
+      <input type="text" id="person-country" class="input-sm"
+        placeholder="e.g. France" maxlength="30"
+        autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <div class="input-group">
       <label>US State (if USA)</label>
-      <input type="text" id="person-state" class="input-sm" placeholder="e.g. Texas" maxlength="20" autocomplete="off" autocorrect="off">
+      <input type="text" id="person-state" class="input-sm"
+        placeholder="e.g. Texas" maxlength="20"
+        autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
   </div>
   <div class="point-hint">
@@ -431,7 +404,7 @@ color: rgba(255,255,255,0.7);
 </div>
 
 <div class="stamps-section">
-  <h3>My Collection</h3>
+  <div class="section-title">My Collection</div>
   <div class="stamps-grid" id="stamps-grid">
     <div class="empty-stamps">
       <span class="empty-big">&#9992;&#65039;</span>
@@ -439,6 +412,7 @@ color: rgba(255,255,255,0.7);
     </div>
   </div>
 </div>
+```
 
   </div>
 </div>
@@ -452,11 +426,7 @@ color: rgba(255,255,255,0.7);
     style="margin:0; padding:10px 12px; font-size:12px; flex:1;">Leave</button>
 </div>
 
-<!-- Toast -->
-
 <div class="toast" id="toast"></div>
-
-<!-- Mickey Bonus Overlay -->
 
 <div class="mickey-blast" id="mickey-blast">
   <div class="mb-ears">&#128045;</div>
@@ -466,15 +436,9 @@ color: rgba(255,255,255,0.7);
   <div class="mb-tap">tap to continue</div>
 </div>
 
-<script type="module">
-
-import { initializeApp }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, set, push, onValue, update, get }
-  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
+<script>
 // ================================================================
-//  PASTE YOUR FIREBASE CONFIG OBJECT HERE
+//  PASTE YOUR FIREBASE CONFIG HERE
 //  Get it from: console.firebase.google.com
 //  Project Settings > Your Apps > Web App > SDK setup > Config
 // ================================================================
@@ -488,9 +452,7 @@ const firebaseConfig = {
 };
 // ================================================================
 
-var fbApp = initializeApp(firebaseConfig);
-var db    = getDatabase(fbApp);
-
+var db = null;
 var myName   = "";
 var myId     = null;
 var roomCode = "";
@@ -499,112 +461,137 @@ var myStamps = [];
 var WDW_LAT      = 28.3772;
 var WDW_LNG      = -81.5707;
 var MICKEY_BONUS = 50;
+
 var MICKEY_NAMES = [
   "mickey","minnie","walt","donald","goofy","pluto","daisy",
   "chip","dale","buzz","woody","elsa","anna","moana","ariel",
-  "belle","jasmine","mulan","tiana","rapunzel","aurora",
-  "cinderella","snow"
+  "belle","jasmine","mulan","tiana","rapunzel","aurora","cinderella","snow"
 ];
+
 var ROOM_WORDS = [
   "CASTLE","MICKEY","MAGIC","EPCOT","PIXAR","SPLASH",
   "NEMO","ELSA","GOOFY","WOODY","BUZZ","BELLE"
 ];
 
 var STATE_COORDS = {
-  "alabama":      [32.8, -86.8],  "alaska":       [64.2,-153.4],
-  "arizona":      [34.3,-111.1],  "arkansas":     [34.8, -92.2],
-  "california":   [36.8,-119.4],  "colorado":     [39.0,-105.5],
-  "connecticut":  [41.6, -72.7],  "delaware":     [38.9, -75.5],
-  "florida":      [27.8, -81.6],  "georgia":      [32.2, -83.4],
-  "hawaii":       [20.3,-156.3],  "idaho":        [44.4,-114.6],
-  "illinois":     [40.0, -89.2],  "indiana":      [39.9, -86.3],
-  "iowa":         [42.0, -93.5],  "kansas":       [38.5, -98.4],
-  "kentucky":     [37.7, -84.9],  "louisiana":    [31.2, -91.8],
-  "maine":        [45.4, -69.0],  "maryland":     [39.1, -76.8],
-  "massachusetts":[42.3, -71.8],  "michigan":     [44.3, -85.4],
-  "minnesota":    [46.4, -93.1],  "mississippi":  [32.7, -89.7],
-  "missouri":     [38.4, -92.5],  "montana":      [47.0,-109.6],
-  "nebraska":     [41.5, -99.9],  "nevada":       [38.5,-117.2],
-  "new hampshire":[43.7, -71.6],  "new jersey":   [40.1, -74.5],
-  "new mexico":   [34.5,-106.2],  "new york":     [42.9, -75.5],
-  "north carolina":[35.6,-79.8],  "north dakota": [47.5,-100.5],
-  "ohio":         [40.4, -82.8],  "oklahoma":     [35.6, -96.9],
-  "oregon":       [43.9,-120.6],  "pennsylvania": [40.6, -77.2],
-  "rhode island": [41.7, -71.5],  "south carolina":[33.9,-80.9],
-  "south dakota": [44.4,-100.2],  "tennessee":    [35.9, -86.7],
-  "texas":        [31.1, -97.6],  "utah":         [39.3,-111.1],
-  "vermont":      [44.0, -72.7],  "virginia":     [37.8, -78.2],
-  "washington":   [47.4,-120.5],  "west virginia":[38.6, -80.6],
-  "wisconsin":    [44.3, -89.6],  "wyoming":      [43.0,-107.6],
-  "dc":                [38.9,-77.0],
-  "district of columbia":[38.9,-77.0],
-  "puerto rico":       [18.2,-66.6],
-  "guam":              [13.4,144.8],
-  "us virgin islands": [18.3,-64.9],
-  "american samoa":    [-14.3,-170.7],
-  "northern mariana islands":[15.1,145.7]
+  "alabama":      [32.8, -86.8],  "alaska":             [64.2,-153.4],
+  "arizona":      [34.3,-111.1],  "arkansas":           [34.8, -92.2],
+  "california":   [36.8,-119.4],  "colorado":           [39.0,-105.5],
+  "connecticut":  [41.6, -72.7],  "delaware":           [38.9, -75.5],
+  "florida":      [27.8, -81.6],  "georgia":            [32.2, -83.4],
+  "hawaii":       [20.3,-156.3],  "idaho":              [44.4,-114.6],
+  "illinois":     [40.0, -89.2],  "indiana":            [39.9, -86.3],
+  "iowa":         [42.0, -93.5],  "kansas":             [38.5, -98.4],
+  "kentucky":     [37.7, -84.9],  "louisiana":          [31.2, -91.8],
+  "maine":        [45.4, -69.0],  "maryland":           [39.1, -76.8],
+  "massachusetts":[42.3, -71.8],  "michigan":           [44.3, -85.4],
+  "minnesota":    [46.4, -93.1],  "mississippi":        [32.7, -89.7],
+  "missouri":     [38.4, -92.5],  "montana":            [47.0,-109.6],
+  "nebraska":     [41.5, -99.9],  "nevada":             [38.5,-117.2],
+  "new hampshire":[43.7, -71.6],  "new jersey":         [40.1, -74.5],
+  "new mexico":   [34.5,-106.2],  "new york":           [42.9, -75.5],
+  "north carolina":[35.6,-79.8],  "north dakota":       [47.5,-100.5],
+  "ohio":         [40.4, -82.8],  "oklahoma":           [35.6, -96.9],
+  "oregon":       [43.9,-120.6],  "pennsylvania":       [40.6, -77.2],
+  "rhode island": [41.7, -71.5],  "south carolina":     [33.9, -80.9],
+  "south dakota": [44.4,-100.2],  "tennessee":          [35.9, -86.7],
+  "texas":        [31.1, -97.6],  "utah":               [39.3,-111.1],
+  "vermont":      [44.0, -72.7],  "virginia":           [37.8, -78.2],
+  "washington":   [47.4,-120.5],  "west virginia":      [38.6, -80.6],
+  "wisconsin":    [44.3, -89.6],  "wyoming":            [43.0,-107.6],
+  "dc":                    [38.9,-77.0],
+  "district of columbia":  [38.9,-77.0],
+  "puerto rico":           [18.2,-66.6],
+  "guam":                  [13.4,144.8],
+  "us virgin islands":     [18.3,-64.9],
+  "american samoa":        [-14.3,-170.7],
+  "northern mariana islands": [15.1,145.7]
 };
 
 var COUNTRY_COORDS = {
-  "canada":               [56.1,-106.3],  "mexico":              [23.6,-102.6],
-  "uk":                   [55.4,  -3.4],  "united kingdom":      [55.4,  -3.4],
-  "great britain":        [55.4,  -3.4],  "england":             [52.4,  -1.9],
-  "scotland":             [56.8,  -4.2],  "wales":               [52.3,  -3.8],
-  "ireland":              [53.4,  -8.2],  "australia":          [-25.3, 133.8],
-  "new zealand":         [-40.9, 174.9],  "japan":               [36.2, 138.3],
-  "china":                [35.9, 104.2],  "india":               [20.6,  78.9],
-  "brazil":              [-14.2, -51.9],  "france":              [46.2,   2.2],
-  "germany":              [51.2,  10.4],  "italy":               [41.9,  12.6],
-  "spain":                [40.5,  -3.7],  "portugal":            [39.4,  -8.2],
-  "netherlands":          [52.1,   5.3],  "belgium":             [50.5,   4.5],
-  "switzerland":          [46.8,   8.2],  "austria":             [47.5,  14.6],
-  "sweden":               [60.1,  18.6],  "norway":              [64.6,  17.9],
-  "denmark":              [56.3,   9.5],  "finland":             [61.9,  25.7],
-  "poland":               [51.9,  19.1],  "ukraine":             [48.4,  31.2],
-  "czech republic":       [49.8,  15.5],  "hungary":             [47.2,  19.5],
-  "romania":              [45.9,  24.9],  "greece":              [39.1,  22.0],
-  "turkey":               [38.9,  35.2],  "russia":              [61.5, 105.3],
-  "israel":               [31.0,  34.9],  "saudi arabia":        [23.9,  45.1],
-  "uae":                  [23.4,  53.8],  "united arab emirates":[23.4,  53.8],
-  "egypt":                [26.8,  30.8],  "south africa":       [-30.6,  22.9],
-  "nigeria":               [9.1,   8.7],  "kenya":                [0.0,  37.9],
-  "argentina":           [-38.4, -63.6],  "colombia":             [4.6, -74.1],
-  "chile":               [-35.7, -71.5],  "peru":                [-9.2, -75.0],
-  "venezuela":             [6.4, -66.6],  "south korea":         [35.9, 127.8],
-  "indonesia":            [-0.8, 113.9],  "philippines":         [12.9, 121.8],
-  "vietnam":              [14.1, 108.3],  "thailand":            [15.9, 100.9],
-  "malaysia":              [4.2, 109.5],  "singapore":            [1.3, 103.8],
-  "bangladesh":           [23.7,  90.4],  "pakistan":            [30.4,  69.3],
-  "iran":                 [32.4,  53.7],  "iraq":                [33.2,  43.7],
-  "morocco":              [31.8,  -7.1],  "ethiopia":             [9.1,  40.5],
-  "ghana":                 [7.9,  -1.0],  "cuba":                [21.5, -79.5],
-  "jamaica":              [18.1, -77.3],  "haiti":               [18.9, -72.7],
-  "dominican republic":   [18.7, -70.2],  "bahamas":             [25.0, -77.4],
-  "barbados":             [13.2, -59.6],  "costa rica":           [9.7, -83.8],
-  "panama":                [8.5, -80.8],  "guatemala":           [15.8, -90.2],
-  "honduras":             [15.2, -86.2],  "el salvador":         [13.8, -88.9],
-  "nicaragua":            [12.9, -85.2],  "trinidad":            [10.7, -61.2]
+  "canada":               [56.1,-106.3], "mexico":               [23.6,-102.6],
+  "uk":                   [55.4,  -3.4], "united kingdom":       [55.4,  -3.4],
+  "great britain":        [55.4,  -3.4], "england":              [52.4,  -1.9],
+  "scotland":             [56.8,  -4.2], "wales":                [52.3,  -3.8],
+  "ireland":              [53.4,  -8.2], "australia":           [-25.3, 133.8],
+  "new zealand":         [-40.9, 174.9], "japan":                [36.2, 138.3],
+  "china":                [35.9, 104.2], "india":                [20.6,  78.9],
+  "brazil":              [-14.2, -51.9], "france":               [46.2,   2.2],
+  "germany":              [51.2,  10.4], "italy":                [41.9,  12.6],
+  "spain":                [40.5,  -3.7], "portugal":             [39.4,  -8.2],
+  "netherlands":          [52.1,   5.3], "belgium":              [50.5,   4.5],
+  "switzerland":          [46.8,   8.2], "austria":              [47.5,  14.6],
+  "sweden":               [60.1,  18.6], "norway":               [64.6,  17.9],
+  "denmark":              [56.3,   9.5], "finland":              [61.9,  25.7],
+  "poland":               [51.9,  19.1], "ukraine":              [48.4,  31.2],
+  "czech republic":       [49.8,  15.5], "hungary":              [47.2,  19.5],
+  "romania":              [45.9,  24.9], "greece":               [39.1,  22.0],
+  "turkey":               [38.9,  35.2], "russia":               [61.5, 105.3],
+  "israel":               [31.0,  34.9], "saudi arabia":         [23.9,  45.1],
+  "uae":                  [23.4,  53.8], "united arab emirates": [23.4,  53.8],
+  "egypt":                [26.8,  30.8], "south africa":        [-30.6,  22.9],
+  "nigeria":               [9.1,   8.7], "kenya":                 [0.0,  37.9],
+  "argentina":           [-38.4, -63.6], "colombia":              [4.6, -74.1],
+  "chile":               [-35.7, -71.5], "peru":                 [-9.2, -75.0],
+  "venezuela":             [6.4, -66.6], "south korea":          [35.9, 127.8],
+  "indonesia":            [-0.8, 113.9], "philippines":          [12.9, 121.8],
+  "vietnam":              [14.1, 108.3], "thailand":             [15.9, 100.9],
+  "malaysia":              [4.2, 109.5], "singapore":             [1.3, 103.8],
+  "bangladesh":           [23.7,  90.4], "pakistan":             [30.4,  69.3],
+  "iran":                 [32.4,  53.7], "iraq":                 [33.2,  43.7],
+  "morocco":              [31.8,  -7.1], "ethiopia":              [9.1,  40.5],
+  "ghana":                 [7.9,  -1.0], "cuba":                 [21.5, -79.5],
+  "jamaica":              [18.1, -77.3], "haiti":                [18.9, -72.7],
+  "dominican republic":   [18.7, -70.2], "bahamas":              [25.0, -77.4],
+  "barbados":             [13.2, -59.6], "costa rica":            [9.7, -83.8],
+  "panama":                [8.5, -80.8], "guatemala":            [15.8, -90.2],
+  "honduras":             [15.2, -86.2], "el salvador":          [13.8, -88.9],
+  "nicaragua":            [12.9, -85.2], "trinidad":             [10.7, -61.2]
 };
 
 var FLAGS = {
   "canada":"CA","mexico":"MX","uk":"GB","united kingdom":"GB",
   "great britain":"GB","england":"GB","scotland":"GB","wales":"GB",
   "ireland":"IE","australia":"AU","new zealand":"NZ","japan":"JP",
-  "china":"CN","india":"IN","brazil":"BR","france":"FR",
-  "germany":"DE","italy":"IT","spain":"ES","portugal":"PT",
-  "netherlands":"NL","belgium":"BE","switzerland":"CH","austria":"AT",
-  "sweden":"SE","norway":"NO","denmark":"DK","finland":"FI",
-  "poland":"PL","ukraine":"UA","czech republic":"CZ","hungary":"HU",
-  "romania":"RO","greece":"GR","turkey":"TR","russia":"RU",
-  "israel":"IL","saudi arabia":"SA","uae":"AE",
-  "united arab emirates":"AE","egypt":"EG","south africa":"ZA",
-  "nigeria":"NG","kenya":"KE","south korea":"KR","indonesia":"ID",
-  "philippines":"PH","vietnam":"VN","thailand":"TH","malaysia":"MY",
-  "singapore":"SG","cuba":"CU","jamaica":"JM","argentina":"AR",
-  "colombia":"CO","chile":"CL","peru":"PE","venezuela":"VE",
-  "costa rica":"CR","panama":"PA","bahamas":"BS","barbados":"BB"
+  "china":"CN","india":"IN","brazil":"BR","france":"FR","germany":"DE",
+  "italy":"IT","spain":"ES","portugal":"PT","netherlands":"NL",
+  "belgium":"BE","switzerland":"CH","austria":"AT","sweden":"SE",
+  "norway":"NO","denmark":"DK","finland":"FI","poland":"PL",
+  "ukraine":"UA","czech republic":"CZ","hungary":"HU","romania":"RO",
+  "greece":"GR","turkey":"TR","russia":"RU","israel":"IL",
+  "saudi arabia":"SA","uae":"AE","united arab emirates":"AE",
+  "egypt":"EG","south africa":"ZA","nigeria":"NG","kenya":"KE",
+  "south korea":"KR","indonesia":"ID","philippines":"PH","vietnam":"VN",
+  "thailand":"TH","malaysia":"MY","singapore":"SG","cuba":"CU",
+  "jamaica":"JM","argentina":"AR","colombia":"CO","chile":"CL",
+  "peru":"PE","venezuela":"VE","costa rica":"CR","panama":"PA",
+  "bahamas":"BS","barbados":"BB"
 };
 
+// ---- INIT FIREBASE ----
+function initFirebase() {
+  var statusBox = document.getElementById("status-box");
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    // Quick connectivity test
+    db.ref(".info/connected").on("value", function(snap) {
+      if (snap.val() === true) {
+        statusBox.textContent = "Connected! Ready to play.";
+        statusBox.className = "status-box";
+        setTimeout(function() { statusBox.style.display = "none"; }, 2000);
+      } else {
+        statusBox.textContent = "Connecting to Firebase...";
+        statusBox.className = "status-box";
+      }
+    });
+  } catch (e) {
+    statusBox.textContent = "Firebase error: " + e.message;
+    statusBox.className = "status-box error";
+  }
+}
+
+// ---- HELPERS ----
 function showToast(msg) {
   var t = document.getElementById("toast");
   t.textContent = msg;
@@ -617,20 +604,20 @@ function randomCode() {
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
-  var R = 6371;
+  var R    = 6371;
   var dLat = (lat2 - lat1) * Math.PI / 180;
   var dLng = (lng2 - lng1) * Math.PI / 180;
-  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  var a    = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+             Math.sin(dLng / 2) * Math.sin(dLng / 2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function kmToMiles(km) { return Math.round(km * 0.621371); }
 
 function distKmForStamp(stamp) {
-  var c = stamp.country.toLowerCase();
-  var s = (stamp.state || "").toLowerCase();
+  var c     = stamp.country.toLowerCase();
+  var s     = (stamp.state || "").toLowerCase();
   var isUSA = (c === "usa" || c === "united states" || c === "us");
   if (isUSA && s && STATE_COORDS[s]) {
     var sc = STATE_COORDS[s];
@@ -643,9 +630,7 @@ function distKmForStamp(stamp) {
   return isUSA ? 1000 : 5000;
 }
 
-function distPtsForKm(km) {
-  return Math.max(1, Math.round(km / 100));
-}
+function distPtsForKm(km) { return Math.max(1, Math.round(km / 100)); }
 
 function isMickeyName(name) {
   return MICKEY_NAMES.indexOf(name.toLowerCase().trim()) !== -1;
@@ -659,18 +644,18 @@ function getFlag(stamp) {
 
 function flagEmoji(code) {
   if (!code) { return ""; }
-  var pts = [];
+  var result = "";
   for (var i = 0; i < code.length; i++) {
-    pts.push(String.fromCodePoint(code.charCodeAt(i) - 65 + 0x1F1E6));
+    result += String.fromCodePoint(code.charCodeAt(i) - 65 + 0x1F1E6);
   }
-  return pts.join("");
+  return result;
 }
 
 function stampClass(km) {
-  if (km < 500)  { return "stamp-near"; }
-  if (km < 2500) { return "stamp-mid"; }
-  if (km < 6000) { return "stamp-far"; }
-  return "stamp-intl";
+  if (km < 500)  { return "s-near"; }
+  if (km < 2500) { return "s-mid";  }
+  if (km < 6000) { return "s-far";  }
+  return "s-intl";
 }
 
 function distLabel(km) {
@@ -680,62 +665,66 @@ function distLabel(km) {
 }
 
 function recalcTotals() {
-  var totalPts = 0;
-  var countries = 0;
-  var states = 0;
+  var totalPts = 0, countries = 0, states = 0;
   for (var i = 0; i < myStamps.length; i++) {
-    totalPts += myStamps[i].pts;
-    var c = myStamps[i].country.toLowerCase();
-    var isUSA = (c === "usa" || c === "united states" || c === "us");
-    if (!isUSA) {
-      countries++;
-    } else if (myStamps[i].state) {
-      states++;
-    }
+    var s  = myStamps[i];
+    totalPts += s.pts;
+    var c  = s.country.toLowerCase();
+    var ok = (c === "usa" || c === "united states" || c === "us");
+    if (!ok) { countries++; }
+    else if (s.state) { states++; }
   }
   return { totalPts: totalPts, countries: countries, states: states };
 }
 
 function showMickeyBlast(name, pts) {
   document.getElementById("mb-name-display").textContent = name + " triggered the bonus!";
-  document.getElementById("mb-pts-display").textContent = "+" + pts + " pts";
+  document.getElementById("mb-pts-display").textContent  = "+" + pts + " pts";
   document.getElementById("mickey-blast").classList.add("show");
 }
 
-async function createRoom() {
+// ---- ROOM FUNCTIONS ----
+function createRoom() {
+  if (!db) { showToast("Firebase not ready yet. Wait a moment."); return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { showToast("Enter your team name first!"); return; }
-  myName = name;
+  myName   = name;
   roomCode = randomCode();
-  var snap = await get(ref(db, "rooms/" + roomCode));
-  if (snap.exists()) { roomCode = randomCode() + Math.floor(Math.random() * 9); }
-  document.getElementById("display-code").textContent = roomCode;
-  document.getElementById("room-created").style.display = "block";
+  db.ref("rooms/" + roomCode).once("value", function(snap) {
+    if (snap.exists()) { roomCode = randomCode() + Math.floor(Math.random() * 9); }
+    document.getElementById("display-code").textContent   = roomCode;
+    document.getElementById("room-created").style.display = "block";
+  });
 }
 
-async function enterGame() {
+function enterGame() {
+  if (!db) { return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { return; }
   myName = name;
-  var playerRef = push(ref(db, "rooms/" + roomCode + "/players"));
+  var playerRef = db.ref("rooms/" + roomCode + "/players").push();
   myId = playerRef.key;
-  await set(playerRef, { name: myName, points: 0, stamps: 0, countries: 0, states: 0 });
-  startGame();
+  playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+    startGame();
+  });
 }
 
-async function joinRoom() {
+function joinRoom() {
+  if (!db) { showToast("Firebase not ready yet. Wait a moment."); return; }
   var name = document.getElementById("join-name").value.trim();
   var code = document.getElementById("join-code").value.trim().toUpperCase();
   if (!name) { showToast("Enter your team name!"); return; }
   if (!code) { showToast("Enter a room code!"); return; }
-  var snap = await get(ref(db, "rooms/" + code));
-  if (!snap.exists()) { showToast("Room not found! Check the code."); return; }
-  myName = name;
-  roomCode = code;
-  var playerRef = push(ref(db, "rooms/" + roomCode + "/players"));
-  myId = playerRef.key;
-  await set(playerRef, { name: myName, points: 0, stamps: 0, countries: 0, states: 0 });
-  startGame();
+  db.ref("rooms/" + code).once("value", function(snap) {
+    if (!snap.exists()) { showToast("Room not found! Check the code."); return; }
+    myName   = name;
+    roomCode = code;
+    var playerRef = db.ref("rooms/" + roomCode + "/players").push();
+    myId = playerRef.key;
+    playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+      startGame();
+    });
+  });
 }
 
 function startGame() {
@@ -748,49 +737,50 @@ function startGame() {
 }
 
 function subscribeToPlayers() {
-  onValue(ref(db, "rooms/" + roomCode + "/players"), function(snap) {
+  db.ref("rooms/" + roomCode + "/players").on("value", function(snap) {
     renderPlayers(snap.val() || {});
   });
 }
 
 function renderPlayers(data) {
   var list = [];
-  Object.keys(data).forEach(function(id) {
+  var keys = Object.keys(data);
+  for (var i = 0; i < keys.length; i++) {
+    var id = keys[i];
     list.push({
       id:     id,
       name:   data[id].name   || "",
       points: data[id].points || 0,
       stamps: data[id].stamps || 0
     });
-  });
+  }
   list.sort(function(a, b) { return b.points - a.points; });
   var maxPts = list.length > 0 ? list[0].points : 0;
-  var html = "";
-  for (var i = 0; i < list.length; i++) {
-    var p = list[i];
+  var html   = "";
+  for (var j = 0; j < list.length; j++) {
+    var p         = list[j];
     var isMe      = (p.id === myId);
     var isLeading = (p.points > 0 && p.points === maxPts);
-    var cls = "player-score" +
-      (isMe      ? " is-me"   : "") +
-      (isLeading ? " leading" : "");
-    var crown = (isLeading && i === 0) ? "&#127942; " : "";
+    var cls = "player-card" + (isMe ? " is-me" : "") + (isLeading ? " leading" : "");
+    var crown = (isLeading && j === 0) ? "&#127942; " : "";
     html += "<div class='" + cls + "'>";
-    html += "<div class='p-name'>" + crown + p.name + "</div>";
-    html += "<div class='p-pts'>" + p.points + "</div>";
-    html += "<div class='p-stamps'>" + p.stamps + " stamps</div>";
+    html += "<div class='pc-name'>" + crown + p.name + "</div>";
+    html += "<div class='pc-pts'>"  + p.points + "</div>";
+    html += "<div class='pc-stamps'>" + p.stamps + " stamps</div>";
     html += "</div>";
   }
   document.getElementById("players-list").innerHTML = html;
 }
 
-async function addStamp() {
+function addStamp() {
+  if (!db) { return; }
   var name    = document.getElementById("person-name").value.trim();
   var country = document.getElementById("person-country").value.trim();
   var state   = document.getElementById("person-state").value.trim();
   if (!name)    { showToast("Enter the person's name!"); return; }
   if (!country) { showToast("Enter the country!"); return; }
 
-  var stamp   = { name: name, country: country, state: state, ts: Date.now() };
+  var stamp   = { name: name, country: country, state: state };
   var km      = distKmForStamp(stamp);
   var dp      = distPtsForKm(km);
   var mickey  = isMickeyName(name);
@@ -805,7 +795,7 @@ async function addStamp() {
   document.getElementById("my-countries").textContent = totals.countries;
   document.getElementById("my-states").textContent    = totals.states;
 
-  await update(ref(db, "rooms/" + roomCode + "/players/" + myId), {
+  db.ref("rooms/" + roomCode + "/players/" + myId).update({
     points:    totals.totalPts,
     stamps:    myStamps.length,
     countries: totals.countries,
@@ -828,13 +818,13 @@ async function addStamp() {
 function renderMyStamps() {
   var grid = document.getElementById("stamps-grid");
   if (myStamps.length === 0) {
-    grid.innerHTML = "<div class='empty-stamps'><span class='empty-big'>&#9992;&#65039;</span>Ask someone where they are from to earn your first stamp!</div>";
+    grid.innerHTML = "<div class='empty-stamps'><span class='empty-big'>&#9992;&#65039;</span>Ask someone where they are from!</div>";
     return;
   }
   var html = "";
   for (var i = myStamps.length - 1; i >= 0; i--) {
     var s       = myStamps[i];
-    var cls     = "stamp " + (s.mickey ? "stamp-mickey" : stampClass(s.km));
+    var cls     = "stamp " + (s.mickey ? "s-mickey" : stampClass(s.km));
     var fcode   = getFlag(s);
     var flagStr = s.mickey ? "&#128045;" : flagEmoji(fcode);
     var loc     = s.state ? (s.state + ", " + s.country) : s.country;
@@ -854,6 +844,7 @@ function leaveGame() {
   if (window.confirm("Leave this game?")) { location.reload(); }
 }
 
+// ---- WIRE UP ----
 document.getElementById("btn-create").addEventListener("click", createRoom);
 document.getElementById("btn-enter").addEventListener("click",  enterGame);
 document.getElementById("btn-join").addEventListener("click",   joinRoom);
@@ -863,6 +854,10 @@ document.getElementById("mickey-blast").addEventListener("click", function() {
   document.getElementById("mickey-blast").classList.remove("show");
 });
 
+// ---- BOOT ----
+window.addEventListener("load", function() {
+  initFirebase();
+});
 </script>
 
 </body>
