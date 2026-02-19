@@ -411,11 +411,64 @@ body::before {
 .wb-rank { font-size: 16px; width: 28px; text-align: left; }
 .wb-name { flex: 1; text-align: left; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8); }
 .wb-score{ font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); }
-  background: rgba(244,192,75,0.08);
-  border: 1px solid rgba(244,192,75,0.25);
+
+/* PLAYER STAMP GALLERY (results screen) */
+.gallery-player {
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; margin-top: 12px; overflow: hidden;
+}
+.gallery-player.first { border-color: rgba(244,192,75,0.4); }
+.gallery-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  user-select: none; -webkit-user-select: none;
+}
+.gallery-player.first .gallery-header { background: rgba(244,192,75,0.08); }
+.gallery-header-left { display: flex; align-items: center; gap: 10px; }
+.gallery-medal { font-size: 20px; }
+.gallery-pname { font-weight: 600; font-size: 14px; color: var(--cream); }
+.gallery-pscore { font-size: 12px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+.gallery-chevron { font-size: 12px; color: rgba(255,255,255,0.3); transition: transform 0.2s; }
+.gallery-player.open .gallery-chevron { transform: rotate(180deg); }
+.gallery-stamps {
+  display: none;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px; padding: 12px;
+  background: rgba(0,0,0,0.15);
+}
+.gallery-player.open .gallery-stamps { display: grid; }
+.gallery-empty {
+  grid-column: 1/-1; text-align: center;
+  padding: 20px; font-size: 12px; color: rgba(255,255,255,0.3);
+}
+
+/* PAST GAMES section in setup */
+.past-games-banner {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px; padding: 16px; margin-bottom: 16px;
+}
+.past-games-banner .pg-title {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,0.3); margin-bottom: 10px;
+}
+.past-game-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 10px; padding: 12px 14px;
-  font-size: 12px; color: rgba(255,255,255,0.6);
-  margin-bottom: 14px; line-height: 1.5;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.past-game-card:last-child { margin-bottom: 0; }
+.past-game-card .rc-info { flex: 1; min-width: 0; }
+.past-game-card .rc-room { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.3); }
+.past-game-card .rc-room strong { color: rgba(255,255,255,0.5); }
+.past-game-card .rc-name { font-weight: 600; font-size: 14px; color: rgba(255,255,255,0.6); }
+.past-game-card .rc-stats { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 1px; }
+.past-game-card .rc-btn {
+  margin: 0; padding: 9px 14px; font-size: 12px; width: auto; flex-shrink: 0;
+  background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.12);
 }
 .status-box.error {
   background: rgba(212,33,61,0.1);
@@ -450,6 +503,12 @@ body::before {
   <div class="rj-sub">Your active games</div>
   <div id="rejoin-list" class="rejoin-list"></div>
   <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:10px; font-size:13px;">Start / Join a Different Game</button>
+</div>
+
+<!-- Past games (ended) - viewable forever -->
+<div class="past-games-banner" id="past-games-banner" style="display:none;">
+  <div class="pg-title">&#127942; Past Games</div>
+  <div id="past-games-list"></div>
 </div>
 
 <!-- Device ID shown small at bottom so user can copy it into Firebase console to recover old sessions -->
@@ -629,7 +688,7 @@ body::before {
   </div>
 </div>
 
-<!-- Winner screen -->
+<!-- Results / Winner screen -->
 
 <div class="winner-screen" id="winner-screen">
   <div class="winner-inner">
@@ -637,8 +696,18 @@ body::before {
     <div class="winner-label">Game Over!</div>
     <div class="winner-name" id="winner-name"></div>
     <div class="winner-pts"  id="winner-pts"></div>
-    <div class="winner-board" id="winner-board"></div>
-    <button class="btn btn-primary" id="btn-new-game" type="button" style="margin-top:24px;">Play Again</button>
+
+<!-- Leaderboard rows -->
+<div class="winner-board" id="winner-board"></div>
+
+<!-- Per-player collapsible stamp galleries -->
+<div id="winner-galleries" style="width:100%; text-align:left; margin-top:8px;"></div>
+
+<div style="display:flex; gap:10px; margin-top:24px;">
+  <button class="btn btn-secondary" id="btn-results-back" type="button" style="margin:0; flex:1;">Back to Menu</button>
+  <button class="btn btn-primary"   id="btn-new-game"     type="button" style="margin:0; flex:1;">New Game</button>
+</div>
+
   </div>
 </div>
 
@@ -1096,21 +1165,22 @@ function findActiveGamesForDevice() {
       return;
     }
 
-    var allRooms = snap.val();
-    var found    = []; // [{roomCode, playerId, playerData}]
+    var allRooms   = snap.val();
+    var active     = []; // rooms still in progress
+    var ended      = []; // finished rooms
 
     Object.keys(allRooms).forEach(function(code) {
       var room = allRooms[code];
-      if (room.ended) { return; } // skip finished games
       if (!room.players) { return; }
       Object.keys(room.players).forEach(function(pid) {
         var p = room.players[pid];
         if (p.deviceId && p.deviceId === deviceId) {
-          found.push({
-            roomCode:   code,
-            playerId:   pid,
-            playerData: p
-          });
+          var entry = { roomCode: code, playerId: pid, playerData: p };
+          if (room.ended) {
+            ended.push({ entry: entry, room: room });
+          } else {
+            active.push(entry);
+          }
         }
       });
     });
@@ -1119,9 +1189,8 @@ function findActiveGamesForDevice() {
     statusBox.className   = "status-box";
     setTimeout(function() { statusBox.style.display = "none"; }, 1500);
 
-    if (found.length > 0) {
-      showRejoinOptions(found, allRooms);
-    }
+    if (active.length > 0) { showRejoinOptions(active, allRooms); }
+    if (ended.length  > 0) { showPastGames(ended); }
   });
 }
 
@@ -1166,6 +1235,45 @@ function showRejoinOptions(found, allRooms) {
   document.getElementById("btn-new-instead").onclick = function() {
     banner.style.display = "none";
   };
+}
+
+// ---- PAST GAMES ----
+function showPastGames(endedList) {
+  var banner = document.getElementById("past-games-banner");
+  var list   = document.getElementById("past-games-list");
+  list.innerHTML = "";
+
+  endedList.forEach(function(item) {
+    var pd          = item.entry.playerData;
+    var room        = item.room;
+    var playerCount = room.players ? Object.keys(room.players).length : 0;
+
+    var card = document.createElement("div");
+    card.className = "past-game-card";
+    card.innerHTML =
+      "<div class='rc-info'>" +
+        "<div class='rc-room'>Room: <strong>" + item.entry.roomCode + "</strong>" +
+          " &nbsp;&#183;&nbsp; " + playerCount + " player" + (playerCount !== 1 ? "s" : "") + "</div>" +
+        "<div class='rc-name'>" + (pd.name || "Unknown") + "</div>" +
+        "<div class='rc-stats'>" + (pd.points || 0) + " pts &nbsp;&#183;&nbsp; " +
+          (pd.stamps || 0) + " stamp" + (pd.stamps !== 1 ? "s" : "") + " &nbsp;&#183;&nbsp; Final</div>" +
+      "</div>" +
+      "<button class='btn rc-btn' type='button'>Results</button>";
+
+    card.querySelector(".rc-btn").addEventListener("click", function() {
+      viewResults(item.room);
+    });
+
+    list.appendChild(card);
+  });
+
+  banner.style.display = "block";
+}
+
+function viewResults(roomData) {
+  // Show the results screen populated from a past game's full room data
+  renderResultsScreen(roomData.players || {});
+  document.getElementById("winner-screen").classList.add("show");
 }
 
 // ---- REJOIN A SPECIFIC GAME ----
@@ -1369,32 +1477,112 @@ function promptEndGame() {
 
 function showWinnerScreen(data) {
   clearSession();
+  renderResultsScreen(data);
+  document.getElementById("winner-screen").classList.add("show");
+}
+
+function renderResultsScreen(data) {
   var list = [];
   var keys = Object.keys(data);
   for (var i = 0; i < keys.length; i++) {
     var id = keys[i];
-    list.push({ name: data[id].name || "", points: data[id].points || 0, stamps: data[id].stamps || 0 });
+    var p  = data[id];
+    list.push({
+      id:          id,
+      name:        p.name        || "Unknown",
+      points:      p.points      || 0,
+      stamps:      p.stamps      || 0,
+      stamps_data: p.stamps_data || []
+    });
   }
   list.sort(function(a, b) { return b.points - a.points; });
 
-  var winner = list[0] || { name: "Nobody", points: 0 };
+  var winner = list[0] || { name: "Nobody", points: 0, stamps: 0 };
   document.getElementById("winner-name").textContent = winner.name;
-  document.getElementById("winner-pts").textContent  = winner.points + " points from " + winner.stamps + " stamps";
+  document.getElementById("winner-pts").textContent  =
+    winner.points + " points -- " + winner.stamps + " stamp" + (winner.stamps !== 1 ? "s" : "");
 
-  var medals = ["&#127947;","&#129352;","&#129353;"];
+  // Leaderboard rows
+  var medals   = ["&#127947;","&#129352;","&#129353;"];
   var boardHtml = "";
   for (var j = 0; j < list.length; j++) {
-    var p   = list[j];
-    var cls = j === 0 ? "wb-row first" : "wb-row";
-    var medal = j < 3 ? medals[j] : (j+1) + ".";
+    var p2   = list[j];
+    var cls  = j === 0 ? "wb-row first" : "wb-row";
+    var medal = j < 3 ? medals[j] : (j + 1) + ".";
     boardHtml += "<div class='" + cls + "'>";
     boardHtml += "<div class='wb-rank'>" + medal + "</div>";
-    boardHtml += "<div class='wb-name'>" + p.name + "</div>";
-    boardHtml += "<div class='wb-score'>" + p.points + "</div>";
+    boardHtml += "<div class='wb-name'>" + p2.name + "</div>";
+    boardHtml += "<div class='wb-score'>" + p2.points + "</div>";
     boardHtml += "</div>";
   }
   document.getElementById("winner-board").innerHTML = boardHtml;
-  document.getElementById("winner-screen").classList.add("show");
+
+  // Collapsible stamp galleries per player
+  var galContainer = document.getElementById("winner-galleries");
+  galContainer.innerHTML = "";
+  for (var k = 0; k < list.length; k++) {
+    galContainer.appendChild(buildGallery(list[k], k));
+  }
+}
+
+function buildGallery(player, rank) {
+  var medals  = ["&#127947;","&#129352;","&#129353;"];
+  var medal   = rank < 3 ? medals[rank] : (rank + 1) + ".";
+  var isFirst = rank === 0;
+
+  var div = document.createElement("div");
+  div.className = "gallery-player" + (isFirst ? " first open" : "");
+
+  // Header (tap to toggle)
+  var header = document.createElement("div");
+  header.className = "gallery-header";
+  header.innerHTML =
+    "<div class='gallery-header-left'>" +
+      "<div class='gallery-medal'>" + medal + "</div>" +
+      "<div><div class='gallery-pname'>" + player.name + "</div>" +
+         "<div class='gallery-pscore'>" + player.points + " pts &nbsp;&#183;&nbsp; " +
+           player.stamps_data.length + " stamp" + (player.stamps_data.length !== 1 ? "s" : "") + "</div>" +
+      "</div>" +
+    "</div>" +
+    "<div class='gallery-chevron'>&#9660;</div>";
+
+  header.addEventListener("click", function() {
+    div.classList.toggle("open");
+  });
+
+  // Stamp grid
+  var grid = document.createElement("div");
+  grid.className = "gallery-stamps";
+
+  if (player.stamps_data.length === 0) {
+    grid.innerHTML = "<div class='gallery-empty'>No stamp details recorded</div>";
+  } else {
+    for (var s = 0; s < player.stamps_data.length; s++) {
+      grid.appendChild(buildStampTile(player.stamps_data[s]));
+    }
+  }
+
+  div.appendChild(header);
+  div.appendChild(grid);
+  return div;
+}
+
+function buildStampTile(stamp) {
+  var cls     = "stamp " + (stamp.mickey ? "s-mickey" : stampClass(stamp.km || 0));
+  var fcode   = getFlag(stamp);
+  var flagStr = stamp.mickey ? "&#128045;" : flagEmoji(fcode);
+  var loc     = stamp.state ? (stamp.state + ", " + stamp.country) : stamp.country;
+  var dist    = stamp.mickey ? "Mickey Bonus!" : distLabel(stamp.km || 0);
+
+  var tile = document.createElement("div");
+  tile.className = cls;
+  tile.innerHTML =
+    "<div class='stamp-pts'>+" + stamp.pts + "</div>" +
+    "<div class='stamp-flag'>" + flagStr + "</div>" +
+    "<div class='stamp-name'>" + stamp.name + "</div>" +
+    "<div class='stamp-loc'>"  + loc  + "</div>" +
+    "<div class='stamp-dist'>" + dist + "</div>";
+  return tile;
 }
 
 // ---- STAMP ----
@@ -1583,7 +1771,10 @@ window.addEventListener("load", function() {
   on("btn-stamp",    addStamp);
   on("btn-leave",    leaveGame);
   on("btn-end",      promptEndGame);
-  on("btn-new-game", function() { clearSession(); location.reload(); });
+  on("btn-new-game",     function() { clearSession(); location.reload(); });
+  on("btn-results-back", function() {
+    document.getElementById("winner-screen").classList.remove("show");
+  });
   on("mickey-blast", function() {
     document.getElementById("mickey-blast").classList.remove("show");
   });
