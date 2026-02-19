@@ -5,6 +5,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Disney Passport Collector</title>
+<meta name="description" content="Collect passport stamps from people around the world at Disney!">
+<meta name="theme-color" content="#0D1B3E">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Passport">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-512.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Firebase COMPAT SDK - works on all browsers including iOS Safari -->
@@ -309,6 +317,7 @@ body::before {
   <div id="setup-screen">
     <div style="height:16px;"></div>
 
+```
 <div id="status-box" class="status-box" style="margin:0 0 16px;">
   Connecting to Firebase...
 </div>
@@ -349,6 +358,7 @@ body::before {
   </div>
   <button class="btn btn-primary" id="btn-join" type="button">Join Game</button>
 </div>
+```
 
   </div>
 
@@ -356,6 +366,7 @@ body::before {
 
   <div id="game-screen">
 
+```
 <div class="scoreboard">
   <div class="scoreboard-title">Leaderboard</div>
   <div class="players-list" id="players-list">
@@ -409,6 +420,7 @@ body::before {
     </div>
   </div>
 </div>
+```
 
   </div>
 </div>
@@ -854,6 +866,11 @@ document.getElementById("mickey-blast").addEventListener("click", function() {
 // ---- BOOT ----
 window.addEventListener("load", function() {
   initFirebase();
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js").catch(function(err) {
+      console.log("SW registration failed:", err);
+    });
+  }
 });
 </script>
 
