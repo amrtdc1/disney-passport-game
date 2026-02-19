@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -14,8 +13,6 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-512.png">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-
-<!-- Firebase loaded via ES module imports in the script below -->
 
 <style>
 :root {
@@ -223,8 +220,7 @@ body::before {
 }
 .empty-big { font-size: 38px; display: block; margin-bottom: 10px; }
 
-/* GAME FOOTER - sits inline at the bottom of the game screen.
-   NOT position:fixed so Safari's browser toolbar can never cover it. */
+/* GAME FOOTER */
 .game-footer {
   display: flex;
   gap: 8px;
@@ -499,22 +495,19 @@ body::before {
 .auth-step { display: none; }
 .auth-step.active { display: block; }
 </style>
-
 </head>
-<body>
 
+<body>
 <div class="app">
 
-<!-- PHONE AUTH SCREEN - shown first, before everything else -->
-
+<!-- PHONE AUTH SCREEN -->
 <div id="auth-screen">
   <div class="auth-logo">
     <span class="castle-icon">&#127984;</span>
     <h1>Passport <span>Collector</span></h1>
   </div>
 
-  <!-- Step 1: enter phone number -->
-
+  <!-- Step 1 -->
   <div class="auth-step active" id="auth-step-phone">
     <div class="auth-card">
       <h2>Welcome!</h2>
@@ -532,8 +525,7 @@ body::before {
     </div>
   </div>
 
-  <!-- Step 2: enter verification code -->
-
+  <!-- Step 2 -->
   <div class="auth-step" id="auth-step-code">
     <div class="auth-card">
       <h2>Check your texts!</h2>
@@ -541,7 +533,7 @@ body::before {
       <div class="input-group">
         <label>Verification Code</label>
         <input type="number" id="auth-code" placeholder="123456"
-          maxlength="6" autocomplete="one-time-code"
+          autocomplete="one-time-code"
           style="font-size:22px; letter-spacing:6px; text-align:center;">
       </div>
       <button class="btn btn-primary"   id="btn-verify-code" type="button">Verify</button>
@@ -551,142 +543,134 @@ body::before {
   </div>
 </div>
 
-  <!-- SETUP (shown after phone auth) -->
+<!-- SETUP -->
+<div id="setup-screen" style="display:none;">
+  <div style="height:16px;"></div>
 
-  <div id="setup-screen" style="display:none;">
-    <div style="height:16px;"></div>
-
-<div id="status-box" class="status-box" style="margin:0 0 16px;">
-  Connecting to Firebase...
-</div>
-
-<!-- Rejoin banner -->
-<div class="rejoin-banner" id="rejoin-banner" style="display:none;">
-  <div class="rj-title">Welcome back!</div>
-  <div class="rj-sub">Your active games</div>
-  <div id="rejoin-list" class="rejoin-list"></div>
-  <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:10px; font-size:13px;">Start / Join a Different Game</button>
-</div>
-
-<!-- Past games -->
-<div class="past-games-banner" id="past-games-banner" style="display:none;">
-  <div class="pg-title">&#127942; Past Games</div>
-  <div id="past-games-list"></div>
-</div>
-
-<div class="setup-card">
-  <h2>Create a Game</h2>
-  <p>Start a new room and share the code with other phones.</p>
-  <div class="input-group">
-    <label>Your Team Name</label>
-    <input type="text" id="create-name" placeholder="e.g. Team Mickey"
-      maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
-  </div>
-  <button class="btn btn-primary" id="btn-create" type="button">Create New Game</button>
-  <div id="room-created" style="display:none; margin-top:16px;">
-    <div class="room-code-box">
-      <div class="code" id="display-code"></div>
-      <div class="sublabel">Share this code with other phones</div>
-    </div>
-    <button class="btn btn-primary" id="btn-enter" type="button" style="margin-top:14px;">Enter Game</button>
-  </div>
-</div>
-
-<div class="divider">- or -</div>
-
-<div class="setup-card">
-  <h2>Join a Game</h2>
-  <p>Got a room code? Enter it to join an existing game.</p>
-  <div class="input-group">
-    <label>Your Team Name</label>
-    <input type="text" id="join-name" placeholder="e.g. Team Minnie"
-      maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
-  </div>
-  <div class="input-group">
-    <label>Room Code</label>
-    <input type="text" id="join-code" placeholder="e.g. CASTLE"
-      maxlength="8" autocomplete="off" autocorrect="off" autocapitalize="characters"
-      spellcheck="false" style="letter-spacing:4px; font-size:18px;">
-  </div>
-  <button class="btn btn-primary" id="btn-join" type="button">Join Game</button>
-</div>
-```
-
+  <div id="status-box" class="status-box" style="margin:0 0 16px;">
+    Connecting to Firebase...
   </div>
 
-  <!-- GAME -->
-
-  <div id="game-screen">
-
-<div class="scoreboard">
-  <div class="scoreboard-title">Leaderboard</div>
-  <div class="players-list" id="players-list">
-    <div style="color:rgba(255,255,255,0.3); font-size:13px; padding:4px;">Loading...</div>
+  <!-- Rejoin banner -->
+  <div class="rejoin-banner" id="rejoin-banner" style="display:none;">
+    <div class="rj-title">Welcome back!</div>
+    <div class="rj-sub">Your active games</div>
+    <div id="rejoin-list" class="rejoin-list"></div>
+    <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:10px; font-size:13px;">Start / Join a Different Game</button>
   </div>
-</div>
 
-<div class="my-stats">
-  <div class="stat-box"><div class="stat-val" id="my-points">0</div><div class="stat-label">Points</div></div>
-  <div class="stat-box"><div class="stat-val" id="my-stamps">0</div><div class="stat-label">Stamps</div></div>
-  <div class="stat-box"><div class="stat-val" id="my-countries">0</div><div class="stat-label">Countries</div></div>
-  <div class="stat-box"><div class="stat-val" id="my-states">0</div><div class="stat-label">US States</div></div>
-</div>
-
-<div class="add-section">
-  <div class="section-title">Stamp a New Passport</div>
-  <div class="input-group">
-    <label>Person's First Name</label>
-    <input type="text" id="person-name" class="input-sm"
-      placeholder="e.g. Sarah" maxlength="20"
-      autocomplete="off" autocorrect="off" spellcheck="false">
+  <!-- Past games -->
+  <div class="past-games-banner" id="past-games-banner" style="display:none;">
+    <div class="pg-title">&#127942; Past Games</div>
+    <div id="past-games-list"></div>
   </div>
-  <div class="form-row">
+
+  <div class="setup-card">
+    <h2>Create a Game</h2>
+    <p>Start a new room and share the code with other phones.</p>
     <div class="input-group">
-      <label>Country</label>
-      <input type="text" id="person-country" class="input-sm"
-        placeholder="e.g. France" maxlength="30"
-        autocomplete="off" autocorrect="off" spellcheck="false">
+      <label>Your Team Name</label>
+      <input type="text" id="create-name" placeholder="e.g. Team Mickey"
+        maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <button class="btn btn-primary" id="btn-create" type="button">Create New Game</button>
+    <div id="room-created" style="display:none; margin-top:16px;">
+      <div class="room-code-box">
+        <div class="code" id="display-code"></div>
+        <div class="sublabel">Share this code with other phones</div>
+      </div>
+      <button class="btn btn-primary" id="btn-enter" type="button" style="margin-top:14px;">Enter Game</button>
+    </div>
+  </div>
+
+  <div class="divider">- or -</div>
+
+  <div class="setup-card">
+    <h2>Join a Game</h2>
+    <p>Got a room code? Enter it to join an existing game.</p>
+    <div class="input-group">
+      <label>Your Team Name</label>
+      <input type="text" id="join-name" placeholder="e.g. Team Minnie"
+        maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
     <div class="input-group">
-      <label>US State (if USA)</label>
-      <input type="text" id="person-state" class="input-sm"
-        placeholder="e.g. Texas" maxlength="20"
+      <label>Room Code</label>
+      <input type="text" id="join-code" placeholder="e.g. CASTLE"
+        maxlength="8" autocomplete="off" autocorrect="off" autocapitalize="characters"
+        spellcheck="false" style="letter-spacing:4px; font-size:18px;">
+    </div>
+    <button class="btn btn-primary" id="btn-join" type="button">Join Game</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <div class="scoreboard">
+    <div class="scoreboard-title">Leaderboard</div>
+    <div class="players-list" id="players-list">
+      <div style="color:rgba(255,255,255,0.3); font-size:13px; padding:4px;">Loading...</div>
+    </div>
+  </div>
+
+  <div class="my-stats">
+    <div class="stat-box"><div class="stat-val" id="my-points">0</div><div class="stat-label">Points</div></div>
+    <div class="stat-box"><div class="stat-val" id="my-stamps">0</div><div class="stat-label">Stamps</div></div>
+    <div class="stat-box"><div class="stat-val" id="my-countries">0</div><div class="stat-label">Countries</div></div>
+    <div class="stat-box"><div class="stat-val" id="my-states">0</div><div class="stat-label">US States</div></div>
+  </div>
+
+  <div class="add-section">
+    <div class="section-title">Stamp a New Passport</div>
+    <div class="input-group">
+      <label>Person's First Name</label>
+      <input type="text" id="person-name" class="input-sm"
+        placeholder="e.g. Sarah" maxlength="20"
         autocomplete="off" autocorrect="off" spellcheck="false">
     </div>
+    <div class="form-row">
+      <div class="input-group">
+        <label>Country</label>
+        <input type="text" id="person-country" class="input-sm"
+          placeholder="e.g. France" maxlength="30"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="input-group">
+        <label>US State (if USA)</label>
+        <input type="text" id="person-state" class="input-sm"
+          placeholder="e.g. Texas" maxlength="20"
+          autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="point-hint">
+      Points = distance from Walt Disney World!<br>
+      Nearby FL = <span>1-5 pts</span> &nbsp;|&nbsp; Far US state = <span>20-30 pts</span><br>
+      International = <span>50-500 pts</span> &nbsp;|&nbsp; Disney name = <span>+50 BONUS!</span>
+    </div>
+    <button class="btn btn-primary" id="btn-stamp" type="button">Add Stamp!</button>
   </div>
-  <div class="point-hint">
-    Points = distance from Walt Disney World!<br>
-    Nearby FL = <span>1-5 pts</span> &nbsp;|&nbsp; Far US state = <span>20-30 pts</span><br>
-    International = <span>50-500 pts</span> &nbsp;|&nbsp; Disney name = <span>+50 BONUS!</span>
-  </div>
-  <button class="btn btn-primary" id="btn-stamp" type="button">Add Stamp!</button>
-</div>
 
-<div class="stamps-section">
-  <div class="section-title">My Collection</div>
-  <div class="stamps-grid" id="stamps-grid">
-    <div class="empty-stamps">
-      <span class="empty-big">&#9992;&#65039;</span>
-      Ask someone where they are from to earn your first stamp!
+  <div class="stamps-section">
+    <div class="section-title">My Collection</div>
+    <div class="stamps-grid" id="stamps-grid">
+      <div class="empty-stamps">
+        <span class="empty-big">&#9992;&#65039;</span>
+        Ask someone where they are from to earn your first stamp!
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Footer inline - Safari toolbar can never cover it -->
-<div class="game-footer" id="game-footer" style="display:none;">
-  <div class="room-pill">Room: <span id="bar-code"></span></div>
-  <div class="room-pill">You: <span id="bar-name" style="color:var(--cream);"></span></div>
-  <button class="btn btn-secondary" id="btn-leave" type="button"
-    style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px;">Leave</button>
-  <button class="btn btn-end" id="btn-end" type="button"
-    style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px; display:none;">End Game</button>
-</div>
-
+  <!-- Footer inline -->
+  <div class="game-footer" id="game-footer" style="display:none;">
+    <div class="room-pill">Room: <span id="bar-code"></span></div>
+    <div class="room-pill">You: <span id="bar-name" style="color:var(--cream);"></span></div>
+    <button class="btn btn-secondary" id="btn-leave" type="button"
+      style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px;">Leave</button>
+    <button class="btn btn-end" id="btn-end" type="button"
+      style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px; display:none;">End Game</button>
   </div>
 </div>
 
-<!-- Reconciliation overlay (keep score vs reset) - separate from main modal -->
-
+<!-- Reconciliation overlay -->
 <div class="modal-overlay" id="reconcile-overlay">
   <div class="modal-box">
     <div class="modal-title">Stamp records missing</div>
@@ -703,7 +687,6 @@ body::before {
 </div>
 
 <!-- Custom confirm modal -->
-
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-box">
     <div class="modal-title" id="modal-title">Leave game?</div>
@@ -716,7 +699,6 @@ body::before {
 </div>
 
 <!-- Edit stamp drawer -->
-
 <div class="edit-overlay" id="edit-overlay">
   <div class="edit-drawer">
     <div class="edit-drawer-handle"></div>
@@ -747,7 +729,6 @@ body::before {
 </div>
 
 <!-- Results / Winner screen -->
-
 <div class="winner-screen" id="winner-screen">
   <div class="winner-inner">
     <div class="winner-trophy">&#127942;</div>
@@ -755,17 +736,13 @@ body::before {
     <div class="winner-name" id="winner-name"></div>
     <div class="winner-pts"  id="winner-pts"></div>
 
-<!-- Leaderboard rows -->
-<div class="winner-board" id="winner-board"></div>
+    <div class="winner-board" id="winner-board"></div>
+    <div id="winner-galleries" style="width:100%; text-align:left; margin-top:8px;"></div>
 
-<!-- Per-player collapsible stamp galleries -->
-<div id="winner-galleries" style="width:100%; text-align:left; margin-top:8px;"></div>
-
-<div style="display:flex; gap:10px; margin-top:24px;">
-  <button class="btn btn-secondary" id="btn-results-back" type="button" style="margin:0; flex:1;">Back to Menu</button>
-  <button class="btn btn-primary"   id="btn-new-game"     type="button" style="margin:0; flex:1;">New Game</button>
-</div>
-
+    <div style="display:flex; gap:10px; margin-top:24px;">
+      <button class="btn btn-secondary" id="btn-results-back" type="button" style="margin:0; flex:1;">Back to Menu</button>
+      <button class="btn btn-primary"   id="btn-new-game"     type="button" style="margin:0; flex:1;">New Game</button>
+    </div>
   </div>
 </div>
 
@@ -781,11 +758,15 @@ body::before {
 
 <script type="module">
 // ---- FIREBASE MODULAR SDK IMPORTS ----
-import { initializeApp }                          from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged,
-         RecaptchaVerifier, signInWithPhoneNumber } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getDatabase, ref, set, push,
-         onValue, once, update }                   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged,
+  RecaptchaVerifier, signInWithPhoneNumber
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getDatabase, ref, set, push,
+  onValue, update, get
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ---- FIREBASE CONFIG ----
 const firebaseConfig = {
@@ -939,12 +920,13 @@ function friendlyAuthError(code) {
     "auth/captcha-check-failed":        "reCAPTCHA failed. Please try again.",
     "auth/quota-exceeded":              "SMS quota exceeded. Try again later.",
     "auth/user-disabled":               "This account has been disabled.",
-    "auth/operation-not-allowed":       "Phone auth is not enabled in Firebase console."
+    "auth/operation-not-allowed":       "Phone auth is not enabled in Firebase console.",
+    "auth/unauthorized-domain":         "This domain isn’t authorized for Firebase Auth. Add your GitHub Pages domain in Firebase Console → Authentication → Settings → Authorized domains."
   };
   return msgs[code] || ("Error (" + code + "). Please try again.");
 }
 
-function setupRecaptcha() {
+async function setupRecaptcha() {
   // Clean up any previous instance
   if (window.recaptchaVerifier) {
     try { window.recaptchaVerifier.clear(); } catch(e) {}
@@ -954,16 +936,19 @@ function setupRecaptcha() {
   window.recaptchaVerifier = new RecaptchaVerifier(auth, "auth-recaptcha", {
     size: "invisible",
     callback: function() {
-      // reCAPTCHA solved invisibly -- sendCode proceeds
+      // reCAPTCHA solved invisibly
     },
     "error-callback": function(err) {
       showAuthNote("reCAPTCHA error. Please refresh and try again.");
       console.error("reCAPTCHA error:", err);
     }
   });
+
+  // Ensure it renders (helps mobile Safari reliability)
+  await window.recaptchaVerifier.render();
 }
 
-function sendCode() {
+async function sendCode() {
   var cc    = (document.getElementById("auth-country-code").value.trim() || "+1");
   var phone = document.getElementById("auth-phone").value.trim().replace(/\D/g, "");
   if (!phone) { showAuthNote("Enter your phone number first."); return; }
@@ -974,29 +959,29 @@ function sendCode() {
   btn.disabled = true;
   showAuthNote("Sending code to " + fullNumber + "...");
 
-  // Always create a fresh RecaptchaVerifier for each send attempt
-  setupRecaptcha();
+  try {
+    await setupRecaptcha();
 
-  signInWithPhoneNumber(auth, fullNumber, window.recaptchaVerifier)
-    .then(function(confirmationResult) {
-      window.confirmationResult = confirmationResult;
-      btn.disabled = false;
-      document.getElementById("auth-step-phone").classList.remove("active");
-      document.getElementById("auth-step-code").classList.add("active");
-      document.getElementById("auth-code-hint").textContent =
-        "Enter the 6-digit code sent to " + fullNumber;
-      showAuthNote("");
-    })
-    .catch(function(err) {
-      btn.disabled = false;
-      console.error("signInWithPhoneNumber error:", err.code, err.message);
-      showAuthNote(friendlyAuthError(err.code));
-      // Clear verifier so next attempt gets a fresh one
-      if (window.recaptchaVerifier) {
-        try { window.recaptchaVerifier.clear(); } catch(e) {}
-        window.recaptchaVerifier = null;
-      }
-    });
+    const confirmationResult = await signInWithPhoneNumber(auth, fullNumber, window.recaptchaVerifier);
+    window.confirmationResult = confirmationResult;
+
+    btn.disabled = false;
+    document.getElementById("auth-step-phone").classList.remove("active");
+    document.getElementById("auth-step-code").classList.add("active");
+    document.getElementById("auth-code-hint").textContent =
+      "Enter the 6-digit code sent to " + fullNumber;
+    showAuthNote("");
+  } catch (err) {
+    btn.disabled = false;
+    console.error("signInWithPhoneNumber error:", err.code, err.message);
+    showAuthNote(friendlyAuthError(err.code));
+
+    // Clear verifier so next attempt gets a fresh one
+    if (window.recaptchaVerifier) {
+      try { window.recaptchaVerifier.clear(); } catch(e) {}
+      window.recaptchaVerifier = null;
+    }
+  }
 }
 
 function verifyCode() {
@@ -1149,7 +1134,7 @@ function findActiveGamesForDevice() {
   if (!uid) { return; }
   var statusBox = document.getElementById("status-box");
 
-  once(ref(db, "rooms")).then(function(snap) {
+  get(ref(db, "rooms")).then(function(snap) {
     if (!snap.exists()) {
       if (statusBox) { statusBox.style.display = "none"; }
       return;
@@ -1287,7 +1272,8 @@ function createRoom() {
   myName    = name;
   roomCode  = randomCode();
   amCreator = true;
-  once(ref(db, "rooms/" + roomCode)).then(function(snap) {
+
+  get(ref(db, "rooms/" + roomCode)).then(function(snap) {
     if (snap.exists()) { roomCode = randomCode() + Math.floor(Math.random() * 9); }
     document.getElementById("display-code").textContent   = roomCode;
     document.getElementById("room-created").style.display = "block";
@@ -1299,6 +1285,7 @@ function enterGame() {
   if (!name || !currentUser) { return; }
   myName    = name;
   amCreator = true;
+
   var playerRef = push(ref(db, "rooms/" + roomCode + "/players"));
   myId = playerRef.key;
   set(playerRef, {
@@ -1314,12 +1301,14 @@ function joinRoom() {
   if (!code) { showToast("Enter a room code!"); return; }
   if (!currentUser) { showToast("Not signed in yet."); return; }
 
-  once(ref(db, "rooms/" + code)).then(function(snap) {
+  get(ref(db, "rooms/" + code)).then(function(snap) {
     if (!snap.exists()) { showToast("Room not found! Check the code."); return; }
     if (snap.val().ended) { showToast("That game has already ended!"); return; }
+
     myName   = name;
     roomCode = code;
     amCreator = false;
+
     var playerRef = push(ref(db, "rooms/" + roomCode + "/players"));
     myId = playerRef.key;
     set(playerRef, {
@@ -1360,7 +1349,7 @@ function subscribeToPlayers() {
 function subscribeToGameState() {
   onValue(ref(db, "rooms/" + roomCode + "/ended"), function(snap) {
     if (snap.val() === true) {
-      once(ref(db, "rooms/" + roomCode + "/players")).then(function(psnap) {
+      get(ref(db, "rooms/" + roomCode + "/players")).then(function(psnap) {
         showWinnerScreen(psnap.val() || {});
       });
     }
@@ -1599,13 +1588,14 @@ function leaveGame() {
 
 // ---- BOOT ----
 window.addEventListener("load", function() {
-  // Watch auth state -- fires immediately if already signed in
+  // Watch auth state
   onAuthStateChanged(auth, function(user) {
     if (user) {
       currentUser = user;
       showSetupScreen();
+
       // Find games once DB confirms connected
-      once(ref(db, ".info/connected")).then(function() {
+      get(ref(db, ".info/connected")).then(function() {
         findActiveGamesForDevice();
       });
     } else {
@@ -1677,8 +1667,6 @@ window.addEventListener("load", function() {
     navigator.serviceWorker.register("service-worker.js").catch(function() {});
   }
 });
-
 </script>
-
 </body>
 </html>
