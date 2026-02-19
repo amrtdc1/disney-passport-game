@@ -355,14 +355,37 @@ body::before {
 
 /* RETURNING PLAYER BANNER */
 .rejoin-banner {
-  background: rgba(244,192,75,0.1);
+  background: rgba(244,192,75,0.08);
   border: 1px solid rgba(244,192,75,0.35);
   border-radius: 12px; padding: 16px;
-  margin-bottom: 16px; text-align: center;
+  margin-bottom: 16px;
 }
-.rejoin-banner .rj-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--gold); margin-bottom: 6px; }
-.rejoin-banner .rj-sub   { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 14px; }
-.rejoin-banner .btn      { font-size: 14px; padding: 12px; }
+.rejoin-banner .rj-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--gold); margin-bottom: 4px; text-align: center; }
+.rejoin-banner .rj-sub   { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-bottom: 12px; text-align: center; }
+.rejoin-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 4px; }
+.rejoin-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(244,192,75,0.2);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 10px;
+}
+.rejoin-card .rc-info { flex: 1; min-width: 0; }
+.rejoin-card .rc-room { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.4); }
+.rejoin-card .rc-room strong { color: var(--gold); }
+.rejoin-card .rc-name { font-weight: 600; font-size: 15px; color: var(--cream); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rejoin-card .rc-stats { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+.rejoin-card .rc-btn  { margin: 0; padding: 10px 16px; font-size: 13px; width: auto; flex-shrink: 0; }
+
+/* DEVICE ID */
+.device-id-box {
+  margin-top: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px; padding: 8px 12px;
+  font-size: 10px; color: rgba(255,255,255,0.25);
+  word-break: break-all; line-height: 1.6;
+}
+.device-id-box span { color: rgba(255,255,255,0.45); font-family: monospace; font-size: 10px; }
 
 /* WINNER SCREEN */
 .winner-screen {
@@ -421,12 +444,18 @@ body::before {
   Connecting to Firebase...
 </div>
 
-<!-- Returning player banner - shown if localStorage has a saved session -->
+<!-- Rejoin banner - shown when Firebase finds active games for this device -->
 <div class="rejoin-banner" id="rejoin-banner" style="display:none;">
   <div class="rj-title">Welcome back!</div>
-  <div class="rj-sub" id="rejoin-sub">Rejoin your active game?</div>
-  <button class="btn btn-primary" id="btn-rejoin" type="button">Rejoin Game</button>
-  <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:8px;">Start Fresh Instead</button>
+  <div class="rj-sub">Your active games</div>
+  <div id="rejoin-list" class="rejoin-list"></div>
+  <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:10px; font-size:13px;">Start / Join a Different Game</button>
+</div>
+
+<!-- Device ID shown small at bottom so user can copy it into Firebase console to recover old sessions -->
+<div class="device-id-box">
+  Device ID: <span id="device-id-display"></span><br>
+  Tip: paste this into your player node in Firebase Realtime DB as the <strong style="color:rgba(255,255,255,0.4)">deviceId</strong> field to recover a lost session.
 </div>
 
 <div class="setup-card">
@@ -768,11 +797,6 @@ function showModal(title, msg, okLabel, onOk) {
   document.getElementById("modal-overlay").classList.add("show");
 }
 
-function hideModal() {
-  document.getElementById("modal-overlay").classList.remove("show");
-  modalOkFn = null;
-}
-
 // ---- HELPERS ----
 function showToast(msg) {
   var t = document.getElementById("toast");
@@ -885,41 +909,306 @@ function initFirebase() {
   }
 }
 
-// ---- SESSION RESTORE ----
-function checkForSavedSession() {
-  var sess = loadSession();
-  if (!sess || !sess.myId || !sess.roomCode) { return; }
+// ---- DEVICE ID ----
+// A stable identifier stored in localStorage. Much lighter than full session --
+// just an ID, so it survives PWA updates far better than game state does.
+function getDeviceId() {
+  try {
+    var id = localStorage.getItem("passport_device_id");
+    if (!id) {
+      id = "dev_" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      localStorage.setItem("passport_device_id", id);
+    }
+    return id;
+  } catch(e) {
+    // localStorage blocked -- generate a session-only id
+    if (!window._fallbackDeviceId) {
+      window._fallbackDeviceId = "dev_" + Math.random().toString(36).slice(2);
+    }
+    return window._fallbackDeviceId;
+  }
+}
 
-  // Check if that room and player still exist and the game isn't over
-  db.ref("rooms/" + sess.roomCode).once("value", function(snap) {
-    if (!snap.exists()) { clearSession(); return; }
-    var roomData = snap.val();
-    // Don't rejoin an ended game
-    if (roomData.ended) { clearSession(); return; }
-    if (!roomData.players || !roomData.players[sess.myId]) { clearSession(); return; }
+var deviceId = getDeviceId();
 
-    // Valid session found - show the rejoin banner
-    var banner = document.getElementById("rejoin-banner");
-    document.getElementById("rejoin-sub").textContent =
-      sess.myName + " in room " + sess.roomCode + " - " +
-      (roomData.players[sess.myId].points || 0) + " pts";
-    banner.style.display = "block";
+// ---- SESSION (lightweight local hint only) ----
+function saveSession() {
+  try {
+    // Store minimal local hint -- the real source of truth is Firebase
+    localStorage.setItem("passport_last_room", roomCode);
+  } catch(e) {}
+}
 
-    document.getElementById("btn-rejoin").onclick = function() {
-      myId      = sess.myId;
-      myName    = sess.myName;
-      roomCode  = sess.roomCode;
-      myStamps  = sess.myStamps || [];
-      amCreator = sess.amCreator || false;
-      banner.style.display = "none";
-      startGame();
-    };
+function clearSession() {
+  try { localStorage.removeItem("passport_last_room"); } catch(e) {}
+}
 
-    document.getElementById("btn-new-instead").onclick = function() {
-      clearSession();
-      banner.style.display = "none";
-    };
+// ---- MODAL ----
+
+function hideModal() {
+  document.getElementById("modal-overlay").classList.remove("show");
+  // Always restore cancel button in case it was repurposed by reconciliation prompt
+  var cancelBtn = document.getElementById("modal-cancel");
+  if (cancelBtn) { cancelBtn.textContent = "Cancel"; cancelBtn.onclick = null; }
+  modalOkFn = null;
+}
+
+// ---- HELPERS ----
+function showToast(msg) {
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(function() { t.classList.remove("show"); }, 2800);
+}
+
+function randomCode() {
+  return ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  var R    = 6371;
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLng = (lng2 - lng1) * Math.PI / 180;
+  var a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
+             Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+             Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function kmToMiles(km) { return Math.round(km * 0.621371); }
+
+function distKmForStamp(stamp) {
+  var c     = stamp.country.toLowerCase();
+  var s     = (stamp.state || "").toLowerCase();
+  var isUSA = (c === "usa" || c === "united states" || c === "us");
+  if (isUSA && s && STATE_COORDS[s]) {
+    var sc = STATE_COORDS[s];
+    return haversineKm(WDW_LAT, WDW_LNG, sc[0], sc[1]);
+  }
+  if (!isUSA && COUNTRY_COORDS[c]) {
+    var cc = COUNTRY_COORDS[c];
+    return haversineKm(WDW_LAT, WDW_LNG, cc[0], cc[1]);
+  }
+  return isUSA ? 1000 : 5000;
+}
+
+function distPtsForKm(km)  { return Math.max(1, Math.round(km / 100)); }
+function isMickeyName(name){ return MICKEY_NAMES.indexOf(name.toLowerCase().trim()) !== -1; }
+
+function getFlag(stamp) {
+  var c = stamp.country.toLowerCase();
+  if (c === "usa" || c === "united states" || c === "us") { return "US"; }
+  return FLAGS[c] || null;
+}
+
+function flagEmoji(code) {
+  if (!code) { return ""; }
+  var result = "";
+  for (var i = 0; i < code.length; i++) {
+    result += String.fromCodePoint(code.charCodeAt(i) - 65 + 0x1F1E6);
+  }
+  return result;
+}
+
+function stampClass(km) {
+  if (km < 500)  { return "s-near"; }
+  if (km < 2500) { return "s-mid";  }
+  if (km < 6000) { return "s-far";  }
+  return "s-intl";
+}
+
+function distLabel(km) {
+  var m = kmToMiles(km);
+  if (m < 100) { return m + " mi away"; }
+  return m.toLocaleString() + " mi";
+}
+
+function recalcTotals() {
+  var totalPts = 0, countries = 0, states = 0;
+  for (var i = 0; i < myStamps.length; i++) {
+    var s  = myStamps[i];
+    totalPts += s.pts;
+    var c  = s.country.toLowerCase();
+    var ok = (c === "usa" || c === "united states" || c === "us");
+    if (!ok) { countries++; }
+    else if (s.state) { states++; }
+  }
+  return { totalPts: totalPts, countries: countries, states: states };
+}
+
+function showMickeyBlast(name, pts) {
+  document.getElementById("mb-name-display").textContent = name + " triggered the bonus!";
+  document.getElementById("mb-pts-display").textContent  = "+" + pts + " pts";
+  document.getElementById("mickey-blast").classList.add("show");
+}
+
+// ---- FIREBASE INIT ----
+function initFirebase() {
+  var statusBox = document.getElementById("status-box");
+
+  // Show device ID so user can paste it into Firebase console to recover a session
+  var didEl = document.getElementById("device-id-display");
+  if (didEl) { didEl.textContent = deviceId; }
+
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref(".info/connected").on("value", function(snap) {
+      if (snap.val() === true) {
+        statusBox.textContent = "Connected! Searching for your games...";
+        statusBox.className   = "status-box";
+        findActiveGamesForDevice();
+      } else {
+        statusBox.textContent = "Connecting to Firebase...";
+        statusBox.className   = "status-box";
+      }
+    });
+  } catch(e) {
+    statusBox.textContent = "Firebase error: " + e.message;
+    statusBox.className   = "status-box error";
+  }
+}
+
+// ---- FIND ALL ACTIVE GAMES FOR THIS DEVICE ----
+// Scans every room in Firebase for a player whose deviceId matches ours.
+// Fast path: checks lastRoom first, then scans all others in parallel.
+function findActiveGamesForDevice() {
+  var statusBox = document.getElementById("status-box");
+
+  db.ref("rooms").once("value", function(snap) {
+    if (!snap.exists()) {
+      statusBox.textContent = "Connected! Ready to play.";
+      setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+      return;
+    }
+
+    var allRooms = snap.val();
+    var found    = []; // [{roomCode, playerId, playerData}]
+
+    Object.keys(allRooms).forEach(function(code) {
+      var room = allRooms[code];
+      if (room.ended) { return; } // skip finished games
+      if (!room.players) { return; }
+      Object.keys(room.players).forEach(function(pid) {
+        var p = room.players[pid];
+        if (p.deviceId && p.deviceId === deviceId) {
+          found.push({
+            roomCode:   code,
+            playerId:   pid,
+            playerData: p
+          });
+        }
+      });
+    });
+
+    statusBox.textContent = "Connected! Ready to play.";
+    statusBox.className   = "status-box";
+    setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+
+    if (found.length > 0) {
+      showRejoinOptions(found, allRooms);
+    }
   });
+}
+
+// ---- SHOW REJOIN OPTIONS ----
+// Renders a card per active game the device is in.
+function showRejoinOptions(found, allRooms) {
+  var banner = document.getElementById("rejoin-banner");
+  var list   = document.getElementById("rejoin-list");
+
+  list.innerHTML = "";
+
+  found.forEach(function(entry) {
+    var room = allRooms[entry.roomCode];
+    var pd   = entry.playerData;
+    var stamps = pd.stamps  || 0;
+    var pts    = pd.points  || 0;
+    var name   = pd.name    || "Unknown";
+
+    // Count players in room
+    var playerCount = room.players ? Object.keys(room.players).length : 0;
+
+    var card = document.createElement("div");
+    card.className = "rejoin-card";
+    card.innerHTML =
+      "<div class='rc-info'>" +
+        "<div class='rc-room'>Room: <strong>" + entry.roomCode + "</strong>" +
+          " &nbsp;&#183;&nbsp; " + playerCount + " player" + (playerCount !== 1 ? "s" : "") + "</div>" +
+        "<div class='rc-name'>" + name + "</div>" +
+        "<div class='rc-stats'>" + pts + " pts &nbsp;&#183;&nbsp; " + stamps + " stamp" + (stamps !== 1 ? "s" : "") + "</div>" +
+      "</div>" +
+      "<button class='btn btn-primary rc-btn' type='button'>Rejoin</button>";
+
+    card.querySelector(".rc-btn").addEventListener("click", function() {
+      rejoinGame(entry, allRooms[entry.roomCode]);
+    });
+
+    list.appendChild(card);
+  });
+
+  banner.style.display = "block";
+
+  document.getElementById("btn-new-instead").onclick = function() {
+    banner.style.display = "none";
+  };
+}
+
+// ---- REJOIN A SPECIFIC GAME ----
+function rejoinGame(entry, roomData) {
+  var pd        = entry.playerData;
+  var savedPts  = pd.points      || 0;
+  var savedData = pd.stamps_data || [];
+
+  // If there are existing points but no stamp records, the stamps were from
+  // before Firebase persistence was added. Ask the player what to do.
+  if (savedPts > 0 && savedData.length === 0) {
+    showModal(
+      "Stamp records missing",
+      "Your score (" + savedPts + " pts) is saved but the individual stamp details weren't recorded yet. " +
+      "Keep your score and re-add stamps manually, or reset to zero and start fresh?",
+      "Keep Score",
+      function() {
+        // Keep existing points -- rejoin with empty stamps display
+        // Player re-adds stamps going forward; display will be out of sync until they do
+        doRejoin(entry, pd, savedData);
+      }
+    );
+
+    // Swap the Cancel button to a "Reset Score" action just for this prompt
+    document.getElementById("modal-cancel").textContent = "Reset to Zero";
+    var originalCancelFn = hideModal;
+    document.getElementById("modal-cancel").onclick = function() {
+      // Reset points in Firebase then rejoin clean
+      document.getElementById("modal-cancel").textContent  = "Cancel";
+      document.getElementById("modal-cancel").onclick = null;
+      hideModal();
+      db.ref("rooms/" + entry.roomCode + "/players/" + entry.playerId).update({
+        points:      0,
+        stamps:      0,
+        countries:   0,
+        states:      0,
+        stamps_data: []
+      }, function() {
+        doRejoin(entry, pd, []);
+      });
+    };
+    return;
+  }
+
+  doRejoin(entry, pd, savedData);
+}
+
+function doRejoin(entry, pd, stampsData) {
+  myId      = entry.playerId;
+  myName    = pd.name      || "";
+  roomCode  = entry.roomCode;
+  amCreator = pd.amCreator || false;
+  myStamps  = stampsData;
+
+  document.getElementById("rejoin-banner").style.display = "none";
+  saveSession();
+  startGame();
 }
 
 // ---- ROOM FUNCTIONS ----
@@ -945,7 +1234,16 @@ function enterGame() {
   amCreator = true;
   var playerRef = db.ref("rooms/" + roomCode + "/players").push();
   myId = playerRef.key;
-  playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+  playerRef.set({
+    name:        myName,
+    points:      0,
+    stamps:      0,
+    countries:   0,
+    states:      0,
+    deviceId:    deviceId,
+    amCreator:   true,
+    stamps_data: []
+  }, function() {
     saveSession();
     startGame();
   });
@@ -965,7 +1263,16 @@ function joinRoom() {
     amCreator = false;
     var playerRef = db.ref("rooms/" + roomCode + "/players").push();
     myId = playerRef.key;
-    playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+    playerRef.set({
+      name:        myName,
+      points:      0,
+      stamps:      0,
+      countries:   0,
+      states:      0,
+      deviceId:    deviceId,
+      amCreator:   false,
+      stamps_data: []
+    }, function() {
       saveSession();
       startGame();
     });
@@ -979,7 +1286,6 @@ function startGame() {
   document.getElementById("bar-code").textContent = roomCode;
   document.getElementById("bar-name").textContent = myName;
 
-  // Show End Game button only for the creator
   if (amCreator) {
     document.getElementById("btn-end").style.display = "block";
   }
@@ -987,7 +1293,6 @@ function startGame() {
   subscribeToPlayers();
   subscribeToGameState();
 
-  // Restore stat display from saved stamps
   if (myStamps.length > 0) {
     var totals = recalcTotals();
     document.getElementById("my-points").textContent    = totals.totalPts;
@@ -1004,7 +1309,6 @@ function subscribeToPlayers() {
   });
 }
 
-// Watch for game ended signal
 function subscribeToGameState() {
   db.ref("rooms/" + roomCode + "/ended").on("value", function(snap) {
     if (snap.val() === true) {
@@ -1112,10 +1416,11 @@ function addStamp() {
   document.getElementById("my-states").textContent    = totals.states;
 
   db.ref("rooms/" + roomCode + "/players/" + myId).update({
-    points:    totals.totalPts,
-    stamps:    myStamps.length,
-    countries: totals.countries,
-    states:    totals.states
+    points:      totals.totalPts,
+    stamps:      myStamps.length,
+    countries:   totals.countries,
+    states:      totals.states,
+    stamps_data: myStamps
   });
 
   saveSession();
@@ -1194,11 +1499,13 @@ function syncTotals() {
   document.getElementById("my-stamps").textContent    = myStamps.length;
   document.getElementById("my-countries").textContent = totals.countries;
   document.getElementById("my-states").textContent    = totals.states;
+  // Write stamps_data so Firebase is the source of truth for stamp collection
   db.ref("rooms/" + roomCode + "/players/" + myId).update({
-    points:    totals.totalPts,
-    stamps:    myStamps.length,
-    countries: totals.countries,
-    states:    totals.states
+    points:      totals.totalPts,
+    stamps:      myStamps.length,
+    countries:   totals.countries,
+    states:      totals.states,
+    stamps_data: myStamps
   });
   saveSession();
   renderMyStamps();
