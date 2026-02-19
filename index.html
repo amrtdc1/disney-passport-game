@@ -568,6 +568,23 @@ body::before {
   </div>
 </div>
 
+<!-- Reconciliation overlay (keep score vs reset) - separate from main modal -->
+
+<div class="modal-overlay" id="reconcile-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Stamp records missing</div>
+    <div class="modal-msg">
+      Your score (<span id="reconcile-pts"></span>) is saved but individual stamp
+      details weren't recorded in this version. Keep your score and re-add stamps
+      manually, or reset to zero and start fresh?
+    </div>
+    <div class="modal-btns" style="flex-direction:column; gap:8px;">
+      <button class="btn btn-primary"   id="reconcile-keep"  type="button" style="margin:0;">Keep My Score</button>
+      <button class="btn btn-danger"    id="reconcile-reset" type="button" style="margin:0;">Reset to Zero</button>
+    </div>
+  </div>
+</div>
+
 <!-- Custom confirm modal -->
 
 <div class="modal-overlay" id="modal-overlay">
@@ -947,9 +964,6 @@ function clearSession() {
 
 function hideModal() {
   document.getElementById("modal-overlay").classList.remove("show");
-  // Always restore cancel button in case it was repurposed by reconciliation prompt
-  var cancelBtn = document.getElementById("modal-cancel");
-  if (cancelBtn) { cancelBtn.textContent = "Cancel"; cancelBtn.onclick = null; }
   modalOkFn = null;
 }
 
@@ -1160,43 +1174,35 @@ function rejoinGame(entry, roomData) {
   var savedPts  = pd.points      || 0;
   var savedData = pd.stamps_data || [];
 
-  // If there are existing points but no stamp records, the stamps were from
-  // before Firebase persistence was added. Ask the player what to do.
-  if (savedPts > 0 && savedData.length === 0) {
-    showModal(
-      "Stamp records missing",
-      "Your score (" + savedPts + " pts) is saved but the individual stamp details weren't recorded yet. " +
-      "Keep your score and re-add stamps manually, or reset to zero and start fresh?",
-      "Keep Score",
-      function() {
-        // Keep existing points -- rejoin with empty stamps display
-        // Player re-adds stamps going forward; display will be out of sync until they do
-        doRejoin(entry, pd, savedData);
-      }
-    );
-
-    // Swap the Cancel button to a "Reset Score" action just for this prompt
-    document.getElementById("modal-cancel").textContent = "Reset to Zero";
-    var originalCancelFn = hideModal;
-    document.getElementById("modal-cancel").onclick = function() {
-      // Reset points in Firebase then rejoin clean
-      document.getElementById("modal-cancel").textContent  = "Cancel";
-      document.getElementById("modal-cancel").onclick = null;
-      hideModal();
-      db.ref("rooms/" + entry.roomCode + "/players/" + entry.playerId).update({
-        points:      0,
-        stamps:      0,
-        countries:   0,
-        states:      0,
-        stamps_data: []
-      }, function() {
-        doRejoin(entry, pd, []);
-      });
-    };
+  // No mismatch -- just go straight in
+  if (savedPts === 0 || savedData.length > 0) {
+    doRejoin(entry, pd, savedData);
     return;
   }
 
-  doRejoin(entry, pd, savedData);
+  // Points exist but no stamp records -- show reconciliation choice.
+  // Use a dedicated two-button overlay instead of repurposing the modal.
+  var overlay = document.getElementById("reconcile-overlay");
+  document.getElementById("reconcile-pts").textContent = savedPts + " pts";
+  overlay.classList.add("show");
+
+  document.getElementById("reconcile-keep").onclick = function() {
+    overlay.classList.remove("show");
+    doRejoin(entry, pd, []);
+  };
+
+  document.getElementById("reconcile-reset").onclick = function() {
+    overlay.classList.remove("show");
+    db.ref("rooms/" + entry.roomCode + "/players/" + entry.playerId).update({
+      points:      0,
+      stamps:      0,
+      countries:   0,
+      states:      0,
+      stamps_data: []
+    }, function() {
+      doRejoin(entry, pd, []);
+    });
+  };
 }
 
 function doRejoin(entry, pd, stampsData) {
