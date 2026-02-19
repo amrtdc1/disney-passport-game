@@ -310,6 +310,49 @@ body::before {
 .modal-btns  { display: flex; gap: 10px; }
 .modal-btns .btn { flex: 1; padding: 12px; font-size: 14px; }
 
+/* EDIT STAMP DRAWER */
+.edit-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 350; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.edit-overlay.show { opacity: 1; pointer-events: all; }
+.edit-drawer {
+  background: var(--navy-light);
+  border: 1px solid rgba(244,192,75,0.3);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  padding: 20px 20px 40px;
+  width: 100%; max-width: 480px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.edit-overlay.show .edit-drawer { transform: translateY(0); }
+.edit-drawer-handle {
+  width: 40px; height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px; margin: 0 auto 18px;
+}
+.edit-drawer-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; color: var(--gold); margin-bottom: 16px; text-align: center;
+}
+.edit-drawer-actions {
+  display: flex; gap: 8px; margin-top: 14px;
+}
+.edit-drawer-actions .btn { flex: 1; margin: 0; padding: 13px; font-size: 14px; }
+.btn-danger {
+  background: rgba(212,33,61,0.15);
+  color: #ff8fa0;
+  border: 1px solid rgba(212,33,61,0.4);
+}
+
+/* Tap indicator on stamps */
+.stamp { cursor: pointer; }
+.stamp:active { opacity: 0.75; }
+
 /* RETURNING PLAYER BANNER */
 .rejoin-banner {
   background: rgba(244,192,75,0.1);
@@ -505,6 +548,37 @@ body::before {
     <div class="modal-btns">
       <button class="btn btn-secondary" id="modal-cancel" type="button" style="margin:0;">Cancel</button>
       <button class="btn btn-primary"   id="modal-ok"     type="button" style="margin:0;">Yes, leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit stamp drawer -->
+
+<div class="edit-overlay" id="edit-overlay">
+  <div class="edit-drawer">
+    <div class="edit-drawer-handle"></div>
+    <div class="edit-drawer-title">Edit Stamp</div>
+    <div class="input-group">
+      <label>Person's First Name</label>
+      <input type="text" id="edit-name" class="input-sm"
+        maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="form-row">
+      <div class="input-group">
+        <label>Country</label>
+        <input type="text" id="edit-country" class="input-sm"
+          maxlength="30" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="input-group">
+        <label>US State (if USA)</label>
+        <input type="text" id="edit-state" class="input-sm"
+          maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+    </div>
+    <div class="edit-drawer-actions">
+      <button class="btn btn-danger"    id="edit-delete" type="button">Delete</button>
+      <button class="btn btn-secondary" id="edit-cancel" type="button">Cancel</button>
+      <button class="btn btn-primary"   id="edit-save"   type="button">Save</button>
     </div>
   </div>
 </div>
@@ -1058,6 +1132,78 @@ function addStamp() {
   }
 }
 
+// ---- EDIT STAMP ----
+var editIndex = -1;
+
+function openEditDrawer(index) {
+  editIndex = index;
+  var s = myStamps[index];
+  document.getElementById("edit-name").value    = s.name;
+  document.getElementById("edit-country").value = s.country;
+  document.getElementById("edit-state").value   = s.state || "";
+  document.getElementById("edit-overlay").classList.add("show");
+}
+
+function closeEditDrawer() {
+  document.getElementById("edit-overlay").classList.remove("show");
+  editIndex = -1;
+}
+
+function saveEditedStamp() {
+  if (editIndex < 0) { return; }
+  var name    = document.getElementById("edit-name").value.trim();
+  var country = document.getElementById("edit-country").value.trim();
+  var state   = document.getElementById("edit-state").value.trim();
+  if (!name)    { showToast("Name cannot be empty!"); return; }
+  if (!country) { showToast("Country cannot be empty!"); return; }
+
+  var stamp    = { name: name, country: country, state: state };
+  var km       = distKmForStamp(stamp);
+  var dp       = distPtsForKm(km);
+  var mickey   = isMickeyName(name);
+  stamp.km     = km;
+  stamp.pts    = dp + (mickey ? MICKEY_BONUS : 0);
+  stamp.mickey = mickey;
+  myStamps[editIndex] = stamp;
+
+  syncTotals();
+  closeEditDrawer();
+  showToast("Stamp updated!");
+}
+
+function deleteStamp() {
+  if (editIndex < 0) { return; }
+  var name = myStamps[editIndex].name;
+  closeEditDrawer();
+  showModal(
+    "Delete stamp?",
+    "Remove " + name + " from your collection? This cannot be undone.",
+    "Delete",
+    function() {
+      myStamps.splice(editIndex, 1);
+      editIndex = -1;
+      syncTotals();
+      showToast("Stamp deleted.");
+    }
+  );
+}
+
+function syncTotals() {
+  var totals = recalcTotals();
+  document.getElementById("my-points").textContent    = totals.totalPts;
+  document.getElementById("my-stamps").textContent    = myStamps.length;
+  document.getElementById("my-countries").textContent = totals.countries;
+  document.getElementById("my-states").textContent    = totals.states;
+  db.ref("rooms/" + roomCode + "/players/" + myId).update({
+    points:    totals.totalPts,
+    stamps:    myStamps.length,
+    countries: totals.countries,
+    states:    totals.states
+  });
+  saveSession();
+  renderMyStamps();
+}
+
 function renderMyStamps() {
   var grid = document.getElementById("stamps-grid");
   if (myStamps.length === 0) {
@@ -1072,7 +1218,8 @@ function renderMyStamps() {
     var flagStr = s.mickey ? "&#128045;" : flagEmoji(fcode);
     var loc     = s.state ? (s.state + ", " + s.country) : s.country;
     var dist    = s.mickey ? "Mickey Bonus!" : distLabel(s.km);
-    html += "<div class='" + cls + "'>";
+    // data-idx stores the actual array index so taps work correctly
+    html += "<div class='" + cls + "' data-idx='" + i + "'>";
     html += "<div class='stamp-pts'>+" + s.pts + "</div>";
     html += "<div class='stamp-flag'>" + flagStr + "</div>";
     html += "<div class='stamp-name'>" + s.name + "</div>";
@@ -1081,6 +1228,14 @@ function renderMyStamps() {
     html += "</div>";
   }
   grid.innerHTML = html;
+
+  // Attach tap listeners to every stamp
+  var stamps = grid.querySelectorAll(".stamp");
+  for (var j = 0; j < stamps.length; j++) {
+    stamps[j].addEventListener("click", function() {
+      openEditDrawer(parseInt(this.getAttribute("data-idx"), 10));
+    });
+  }
 }
 
 // ---- LEAVE ----
@@ -1124,6 +1279,13 @@ window.addEventListener("load", function() {
     var fn = modalOkFn;
     hideModal();
     if (fn) { fn(); }
+  });
+  on("edit-save",   saveEditedStamp);
+  on("edit-cancel", closeEditDrawer);
+  on("edit-delete", deleteStamp);
+  // Tap outside drawer to cancel
+  document.getElementById("edit-overlay").addEventListener("click", function(e) {
+    if (e.target === this) { closeEditDrawer(); }
   });
 
   if ("serviceWorker" in navigator) {
