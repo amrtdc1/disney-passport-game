@@ -535,13 +535,13 @@ body::before {
 
 <script>
 const firebaseConfig = {
-  apiKey: "AIzaSyAh-GBElMhJbXGftr9IUTHmk4LYAlkAPfE",
-  authDomain: "disney-world-passport-game.firebaseapp.com",
-  databaseURL: "https://disney-world-passport-game-default-rtdb.firebaseio.com",
-  projectId: "disney-world-passport-game",
-  storageBucket: "disney-world-passport-game.firebasestorage.app",
-  messagingSenderId: "134143307824",
-  appId: "1:134143307824:web:a12ede396c472decce7df5"
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
 };
 
 var db        = null;
@@ -1097,27 +1097,36 @@ function leaveGame() {
   );
 }
 
-// ---- WIRE UP ----
-document.getElementById("btn-create").addEventListener("click", createRoom);
-document.getElementById("btn-enter").addEventListener("click",  enterGame);
-document.getElementById("btn-join").addEventListener("click",   joinRoom);
-document.getElementById("btn-stamp").addEventListener("click",  addStamp);
-document.getElementById("btn-leave").addEventListener("click",  leaveGame);
-document.getElementById("btn-end").addEventListener("click",    promptEndGame);
-document.getElementById("btn-new-game").addEventListener("click", function() { clearSession(); location.reload(); });
-document.getElementById("mickey-blast").addEventListener("click", function() {
-  document.getElementById("mickey-blast").classList.remove("show");
-});
-document.getElementById("modal-cancel").addEventListener("click", hideModal);
-document.getElementById("modal-ok").addEventListener("click", function() {
-  var fn = modalOkFn;
-  hideModal();
-  if (fn) { fn(); }
-});
-
 // ---- BOOT ----
 window.addEventListener("load", function() {
-  initFirebase();
+  try { initFirebase(); } catch(e) {
+    document.getElementById("status-box").textContent = "Init error: " + e.message;
+    document.getElementById("status-box").className = "status-box error";
+  }
+
+  // Wire up all buttons inside load so any parse-time errors above can't block this
+  function on(id, fn) {
+    var el = document.getElementById(id);
+    if (el) { el.addEventListener("click", fn); }
+  }
+
+  on("btn-create",   createRoom);
+  on("btn-enter",    enterGame);
+  on("btn-join",     joinRoom);
+  on("btn-stamp",    addStamp);
+  on("btn-leave",    leaveGame);
+  on("btn-end",      promptEndGame);
+  on("btn-new-game", function() { clearSession(); location.reload(); });
+  on("mickey-blast", function() {
+    document.getElementById("mickey-blast").classList.remove("show");
+  });
+  on("modal-cancel", hideModal);
+  on("modal-ok", function() {
+    var fn = modalOkFn;
+    hideModal();
+    if (fn) { fn(); }
+  });
+
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js").catch(function(err) {
       console.log("SW registration failed:", err);
