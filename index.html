@@ -47,7 +47,7 @@ body::before {
 }
 .app {
   position: relative; z-index: 1;
-  max-width: 480px; margin: 0 auto; padding: 0 0 110px;
+  max-width: 480px; margin: 0 auto; padding: 0 0 20px;
 }
 
 /* HEADER */
@@ -227,22 +227,22 @@ body::before {
 }
 .empty-big { font-size: 38px; display: block; margin-bottom: 10px; }
 
-/* BOTTOM BAR */
-.bottom-bar {
-  position: fixed; bottom: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 480px;
-  background: rgba(13,27,62,0.96);
-  backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(244,192,75,0.2);
-  padding: 10px 14px 24px;
-  display: flex; gap: 8px;
+/* GAME FOOTER - sits inline at the bottom of the game screen.
+   NOT position:fixed so Safari's browser toolbar can never cover it. */
+.game-footer {
+  display: flex;
+  gap: 8px;
+  padding: 16px 14px 40px;
+  border-top: 1px solid rgba(244,192,75,0.15);
+  margin-top: 8px;
+  align-items: center;
 }
 .room-pill {
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px; padding: 10px;
   font-size: 11px; color: rgba(255,255,255,0.4); white-space: nowrap;
+  display: flex; align-items: center;
 }
 .room-pill span { color: var(--gold); font-weight: 700; letter-spacing: 1px; }
 
@@ -483,21 +483,20 @@ body::before {
   </div>
 </div>
 
-  </div>
-</div>
-
-<!-- Bottom bar -->
-
-<div class="bottom-bar" id="bottom-bar" style="display:none;">
+<!-- Footer inline - Safari toolbar can never cover it -->
+<div class="game-footer" id="game-footer" style="display:none;">
   <div class="room-pill">Room: <span id="bar-code"></span></div>
   <div class="room-pill">You: <span id="bar-name" style="color:var(--cream);"></span></div>
   <button class="btn btn-secondary" id="btn-leave" type="button"
-    style="margin:0; padding:10px 12px; font-size:12px; flex:1;">Leave</button>
+    style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px;">Leave</button>
   <button class="btn btn-end" id="btn-end" type="button"
-    style="margin:0; padding:10px 12px; font-size:12px; flex:1; display:none;">End Game</button>
+    style="margin:0; padding:12px 14px; font-size:13px; flex:1; min-height:44px; display:none;">End Game</button>
 </div>
 
-<!-- Custom confirm modal (replaces window.confirm which is blocked in PWA) -->
+  </div>
+</div>
+
+<!-- Custom confirm modal -->
 
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal-box">
@@ -900,9 +899,9 @@ function joinRoom() {
 }
 
 function startGame() {
-  document.getElementById("setup-screen").style.display = "none";
-  document.getElementById("game-screen").style.display  = "block";
-  document.getElementById("bottom-bar").style.display   = "flex";
+  document.getElementById("setup-screen").style.display  = "none";
+  document.getElementById("game-screen").style.display   = "block";
+  document.getElementById("game-footer").style.display   = "flex";
   document.getElementById("bar-code").textContent = roomCode;
   document.getElementById("bar-name").textContent = myName;
 
