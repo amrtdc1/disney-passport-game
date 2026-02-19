@@ -962,25 +962,23 @@ function initFirebase() {
 }
 
 function initRecaptcha() {
-  try {
-    if (recaptchaVerifier) { return; } // already set up
-    recaptchaVerifier = new firebase.auth.RecaptchaVerifier("auth-recaptcha", {
-      size: "invisible",
-      callback: function() {
-        // reCAPTCHA solved -- sendCode() will proceed automatically
-      },
-      "expired-callback": function() {
-        // Token expired -- reset so user can try again
-        recaptchaVerifier.clear();
-        recaptchaVerifier = null;
-        initRecaptcha();
+  // Create the verifier ONCE and reuse it -- do not destroy/recreate on each attempt.
+  // Attach to a dedicated invisible div, not the button.
+  recaptchaVerifier = new firebase.auth.RecaptchaVerifier("auth-recaptcha", {
+    size: "invisible",
+    "expired-callback": function() {
+      // Token expired -- reset the widget so the user can try again
+      if (window.recaptchaWidgetId !== undefined) {
+        grecaptcha.reset(window.recaptchaWidgetId);
       }
-    });
-    // Render it eagerly so it's ready when the user taps Send Code
-    recaptchaVerifier.render();
-  } catch(e) {
-    console.log("reCAPTCHA init:", e.message);
-  }
+    }
+  });
+  // Render eagerly and store the widget ID for future resets
+  recaptchaVerifier.render().then(function(widgetId) {
+    window.recaptchaWidgetId = widgetId;
+  }).catch(function(e) {
+    console.log("reCAPTCHA render error:", e);
+  });
 }
 
 function sendCode() {
@@ -990,12 +988,14 @@ function sendCode() {
   if (!cc.startsWith("+")) { cc = "+" + cc; }
   var fullNumber = cc + phone;
 
-  showAuthNote("Sending code...");
-  document.getElementById("btn-send-code").disabled = true;
+  var btn = document.getElementById("btn-send-code");
+  btn.disabled = true;
+  showAuthNote("Sending code to " + fullNumber + "...");
 
   auth.signInWithPhoneNumber(fullNumber, recaptchaVerifier)
     .then(function(result) {
       confirmResult = result;
+      btn.disabled = false;
       document.getElementById("auth-step-phone").classList.remove("active");
       document.getElementById("auth-step-code").classList.add("active");
       document.getElementById("auth-code-hint").textContent =
@@ -1003,14 +1003,18 @@ function sendCode() {
       showAuthNote("");
     })
     .catch(function(err) {
-      document.getElementById("btn-send-code").disabled = false;
+      btn.disabled = false;
       showAuthNote(friendlyAuthError(err.code));
-      // Reset reCAPTCHA so the user can try again cleanly
-      if (recaptchaVerifier) {
-        recaptchaVerifier.clear();
-        recaptchaVerifier = null;
+      // Reset only the reCAPTCHA widget token so user can try again
+      // Do NOT destroy/recreate the verifier -- that causes the loop
+      if (window.recaptchaWidgetId !== undefined) {
+        grecaptcha.reset(window.recaptchaWidgetId);
+      } else if (recaptchaVerifier) {
+        recaptchaVerifier.render().then(function(widgetId) {
+          window.recaptchaWidgetId = widgetId;
+          grecaptcha.reset(widgetId);
+        });
       }
-      initRecaptcha();
     });
 }
 
@@ -1037,13 +1041,13 @@ function backToPhone() {
   document.getElementById("auth-step-code").classList.remove("active");
   document.getElementById("auth-step-phone").classList.add("active");
   document.getElementById("auth-code").value = "";
+  document.getElementById("btn-send-code").disabled = false;
   showAuthNote("");
   confirmResult = null;
-  if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
-    recaptchaVerifier = null;
+  // Just reset the widget token -- keep the same verifier instance
+  if (window.recaptchaWidgetId !== undefined) {
+    grecaptcha.reset(window.recaptchaWidgetId);
   }
-  initRecaptcha();
 }
 
 function showAuthNote(msg) {
