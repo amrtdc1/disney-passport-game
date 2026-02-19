@@ -797,13 +797,10 @@ const firebaseConfig = {
 
 // ---- GLOBALS ----
 var db            = null;
-var auth          = null;
 var currentUser   = null;   // Firebase Auth user -- uid replaces old deviceId
-var confirmResult = null;   // Phone auth confirmation result
-var recaptchaVerifier = null;
 
 var myName    = "";
-var myId      = null;       // Firebase push key for this player node
+var myId      = null;
 var roomCode  = "";
 var myStamps  = [];
 var amCreator = false;
@@ -924,11 +921,28 @@ var FLAGS = {
 function initFirebase() {
   try {
     firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db   = firebase.database();
+    db = firebase.database();
 
-    // onAuthStateChanged fires immediately on load if already signed in
-    auth.onAuthStateChanged(function(user) {
+    // Set up reCAPTCHA verifier immediately after initializeApp,
+    // before onAuthStateChanged -- matches Firebase docs exactly.
+    // Store on window so it persists and is accessible everywhere.
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier("auth-recaptcha", {
+      size: "invisible",
+      "expired-callback": function() {
+        if (window.recaptchaWidgetId !== undefined) {
+          grecaptcha.reset(window.recaptchaWidgetId);
+        }
+      }
+    });
+
+    window.recaptchaVerifier.render().then(function(widgetId) {
+      window.recaptchaWidgetId = widgetId;
+    }).catch(function(e) {
+      console.log("reCAPTCHA render error:", e);
+    });
+
+    // Watch auth state
+    firebase.auth().onAuthStateChanged(function(user) {
       if (user) {
         currentUser = user;
         showSetupScreen();
@@ -936,7 +950,6 @@ function initFirebase() {
         currentUser = null;
         document.getElementById("auth-screen").style.display  = "block";
         document.getElementById("setup-screen").style.display = "none";
-        initRecaptcha();
       }
     });
 
@@ -961,26 +974,6 @@ function initFirebase() {
   }
 }
 
-function initRecaptcha() {
-  // Create the verifier ONCE and reuse it -- do not destroy/recreate on each attempt.
-  // Attach to a dedicated invisible div, not the button.
-  recaptchaVerifier = new firebase.auth.RecaptchaVerifier("auth-recaptcha", {
-    size: "invisible",
-    "expired-callback": function() {
-      // Token expired -- reset the widget so the user can try again
-      if (window.recaptchaWidgetId !== undefined) {
-        grecaptcha.reset(window.recaptchaWidgetId);
-      }
-    }
-  });
-  // Render eagerly and store the widget ID for future resets
-  recaptchaVerifier.render().then(function(widgetId) {
-    window.recaptchaWidgetId = widgetId;
-  }).catch(function(e) {
-    console.log("reCAPTCHA render error:", e);
-  });
-}
-
 function sendCode() {
   var cc    = (document.getElementById("auth-country-code").value.trim() || "+1");
   var phone = document.getElementById("auth-phone").value.trim().replace(/\D/g, "");
@@ -992,9 +985,10 @@ function sendCode() {
   btn.disabled = true;
   showAuthNote("Sending code to " + fullNumber + "...");
 
-  auth.signInWithPhoneNumber(fullNumber, recaptchaVerifier)
-    .then(function(result) {
-      confirmResult = result;
+  // Match docs exactly: firebase.auth().signInWithPhoneNumber() with window.recaptchaVerifier
+  firebase.auth().signInWithPhoneNumber(fullNumber, window.recaptchaVerifier)
+    .then(function(confirmationResult) {
+      window.confirmationResult = confirmationResult;
       btn.disabled = false;
       document.getElementById("auth-step-phone").classList.remove("active");
       document.getElementById("auth-step-code").classList.add("active");
@@ -1005,15 +999,8 @@ function sendCode() {
     .catch(function(err) {
       btn.disabled = false;
       showAuthNote(friendlyAuthError(err.code));
-      // Reset only the reCAPTCHA widget token so user can try again
-      // Do NOT destroy/recreate the verifier -- that causes the loop
       if (window.recaptchaWidgetId !== undefined) {
         grecaptcha.reset(window.recaptchaWidgetId);
-      } else if (recaptchaVerifier) {
-        recaptchaVerifier.render().then(function(widgetId) {
-          window.recaptchaWidgetId = widgetId;
-          grecaptcha.reset(widgetId);
-        });
       }
     });
 }
@@ -1021,12 +1008,12 @@ function sendCode() {
 function verifyCode() {
   var code = document.getElementById("auth-code").value.trim();
   if (!code || code.length < 6) { showAuthNote("Enter the 6-digit code."); return; }
-  if (!confirmResult) { showAuthNote("Please request a new code."); return; }
+  if (!window.confirmationResult) { showAuthNote("Please request a new code."); return; }
 
   showAuthNote("Verifying...");
   document.getElementById("btn-verify-code").disabled = true;
 
-  confirmResult.confirm(code)
+  window.confirmationResult.confirm(code)
     .then(function(result) {
       currentUser = result.user;
       // onAuthStateChanged fires automatically and calls showSetupScreen()
@@ -1043,8 +1030,7 @@ function backToPhone() {
   document.getElementById("auth-code").value = "";
   document.getElementById("btn-send-code").disabled = false;
   showAuthNote("");
-  confirmResult = null;
-  // Just reset the widget token -- keep the same verifier instance
+  window.confirmationResult = null;
   if (window.recaptchaWidgetId !== undefined) {
     grecaptcha.reset(window.recaptchaWidgetId);
   }
