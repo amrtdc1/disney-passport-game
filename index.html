@@ -1110,8 +1110,9 @@ document.getElementById("mickey-blast").addEventListener("click", function() {
 });
 document.getElementById("modal-cancel").addEventListener("click", hideModal);
 document.getElementById("modal-ok").addEventListener("click", function() {
+  var fn = modalOkFn;
   hideModal();
-  if (modalOkFn) { modalOkFn(); }
+  if (fn) { fn(); }
 });
 
 // ---- BOOT ----
