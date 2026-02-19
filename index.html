@@ -964,9 +964,20 @@ function initFirebase() {
 function initRecaptcha() {
   try {
     if (recaptchaVerifier) { return; } // already set up
-    recaptchaVerifier = new firebase.auth.RecaptchaVerifier("btn-send-code", {
-      size: "invisible"
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier("auth-recaptcha", {
+      size: "invisible",
+      callback: function() {
+        // reCAPTCHA solved -- sendCode() will proceed automatically
+      },
+      "expired-callback": function() {
+        // Token expired -- reset so user can try again
+        recaptchaVerifier.clear();
+        recaptchaVerifier = null;
+        initRecaptcha();
+      }
     });
+    // Render it eagerly so it's ready when the user taps Send Code
+    recaptchaVerifier.render();
   } catch(e) {
     console.log("reCAPTCHA init:", e.message);
   }
@@ -994,12 +1005,12 @@ function sendCode() {
     .catch(function(err) {
       document.getElementById("btn-send-code").disabled = false;
       showAuthNote(friendlyAuthError(err.code));
-      // Reset reCAPTCHA so user can try again
+      // Reset reCAPTCHA so the user can try again cleanly
       if (recaptchaVerifier) {
-        recaptchaVerifier.render().then(function(id) {
-          if (typeof grecaptcha !== "undefined") { grecaptcha.reset(id); }
-        });
+        recaptchaVerifier.clear();
+        recaptchaVerifier = null;
       }
+      initRecaptcha();
     });
 }
 
@@ -1028,8 +1039,10 @@ function backToPhone() {
   document.getElementById("auth-code").value = "";
   showAuthNote("");
   confirmResult = null;
-  // Re-initialise reCAPTCHA for a fresh attempt
-  recaptchaVerifier = null;
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
+  }
   initRecaptcha();
 }
 
