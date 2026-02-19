@@ -286,8 +286,65 @@ body::before {
   to   { transform: rotate(0deg) scale(1); }
 }
 
-/* STATUS BOX */
-.status-box {
+.btn-end {
+  background: linear-gradient(135deg, #D4213D, #8B1A1A);
+  color: var(--cream);
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.show { opacity: 1; pointer-events: all; }
+.modal-box {
+  background: var(--navy-light);
+  border: 1px solid rgba(244,192,75,0.4);
+  border-radius: 18px; padding: 28px 24px;
+  max-width: 320px; width: 90%; text-align: center;
+}
+.modal-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); margin-bottom: 10px; }
+.modal-msg   { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 20px; line-height: 1.5; }
+.modal-btns  { display: flex; gap: 10px; }
+.modal-btns .btn { flex: 1; padding: 12px; font-size: 14px; }
+
+/* RETURNING PLAYER BANNER */
+.rejoin-banner {
+  background: rgba(244,192,75,0.1);
+  border: 1px solid rgba(244,192,75,0.35);
+  border-radius: 12px; padding: 16px;
+  margin-bottom: 16px; text-align: center;
+}
+.rejoin-banner .rj-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--gold); margin-bottom: 6px; }
+.rejoin-banner .rj-sub   { font-size: 12px; color: rgba(255,255,255,0.5); margin-bottom: 14px; }
+.rejoin-banner .btn      { font-size: 14px; padding: 12px; }
+
+/* WINNER SCREEN */
+.winner-screen {
+  position: fixed; inset: 0;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+  overflow-y: auto;
+}
+.winner-screen.show { opacity: 1; pointer-events: all; }
+.winner-inner { text-align: center; padding: 40px 24px; max-width: 400px; width: 100%; }
+.winner-trophy { font-size: 80px; animation: mickeySpin 0.6s ease-out; }
+.winner-label  { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin: 10px 0 4px; }
+.winner-name   { font-family: 'Playfair Display', serif; font-size: 36px; color: var(--gold); text-shadow: 0 0 30px rgba(244,192,75,0.5); }
+.winner-pts    { font-size: 14px; color: rgba(255,255,255,0.5); margin-top: 4px; margin-bottom: 24px; }
+.winner-board  { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.wb-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.05); border-radius: 10px; padding: 10px 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.wb-row.first { border-color: var(--gold); background: rgba(244,192,75,0.1); }
+.wb-rank { font-size: 16px; width: 28px; text-align: left; }
+.wb-name { flex: 1; text-align: left; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.wb-score{ font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); }
   background: rgba(244,192,75,0.08);
   border: 1px solid rgba(244,192,75,0.25);
   border-radius: 10px; padding: 12px 14px;
@@ -317,9 +374,16 @@ body::before {
   <div id="setup-screen">
     <div style="height:16px;"></div>
 
-```
 <div id="status-box" class="status-box" style="margin:0 0 16px;">
   Connecting to Firebase...
+</div>
+
+<!-- Returning player banner - shown if localStorage has a saved session -->
+<div class="rejoin-banner" id="rejoin-banner" style="display:none;">
+  <div class="rj-title">Welcome back!</div>
+  <div class="rj-sub" id="rejoin-sub">Rejoin your active game?</div>
+  <button class="btn btn-primary" id="btn-rejoin" type="button">Rejoin Game</button>
+  <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:8px;">Start Fresh Instead</button>
 </div>
 
 <div class="setup-card">
@@ -358,7 +422,6 @@ body::before {
   </div>
   <button class="btn btn-primary" id="btn-join" type="button">Join Game</button>
 </div>
-```
 
   </div>
 
@@ -366,7 +429,6 @@ body::before {
 
   <div id="game-screen">
 
-```
 <div class="scoreboard">
   <div class="scoreboard-title">Leaderboard</div>
   <div class="players-list" id="players-list">
@@ -420,7 +482,6 @@ body::before {
     </div>
   </div>
 </div>
-```
 
   </div>
 </div>
@@ -432,6 +493,34 @@ body::before {
   <div class="room-pill">You: <span id="bar-name" style="color:var(--cream);"></span></div>
   <button class="btn btn-secondary" id="btn-leave" type="button"
     style="margin:0; padding:10px 12px; font-size:12px; flex:1;">Leave</button>
+  <button class="btn btn-end" id="btn-end" type="button"
+    style="margin:0; padding:10px 12px; font-size:12px; flex:1; display:none;">End Game</button>
+</div>
+
+<!-- Custom confirm modal (replaces window.confirm which is blocked in PWA) -->
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">Leave game?</div>
+    <div class="modal-msg" id="modal-msg">Your stamps will be saved but you will need the room code to rejoin.</div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" id="modal-cancel" type="button" style="margin:0;">Cancel</button>
+      <button class="btn btn-primary"   id="modal-ok"     type="button" style="margin:0;">Yes, leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- Winner screen -->
+
+<div class="winner-screen" id="winner-screen">
+  <div class="winner-inner">
+    <div class="winner-trophy">&#127942;</div>
+    <div class="winner-label">Game Over!</div>
+    <div class="winner-name" id="winner-name"></div>
+    <div class="winner-pts"  id="winner-pts"></div>
+    <div class="winner-board" id="winner-board"></div>
+    <button class="btn btn-primary" id="btn-new-game" type="button" style="margin-top:24px;">Play Again</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -445,11 +534,6 @@ body::before {
 </div>
 
 <script>
-// ================================================================
-//  PASTE YOUR FIREBASE CONFIG HERE
-//  Get it from: console.firebase.google.com
-//  Project Settings > Your Apps > Web App > SDK setup > Config
-// ================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyAh-GBElMhJbXGftr9IUTHmk4LYAlkAPfE",
   authDomain: "disney-world-passport-game.firebaseapp.com",
@@ -459,13 +543,14 @@ const firebaseConfig = {
   messagingSenderId: "134143307824",
   appId: "1:134143307824:web:a12ede396c472decce7df5"
 };
-// ================================================================
 
-var db = null;
-var myName   = "";
-var myId     = null;
-var roomCode = "";
-var myStamps = [];
+var db        = null;
+var myName    = "";
+var myId      = null;
+var roomCode  = "";
+var myStamps  = [];
+var amCreator = false;
+var modalOkFn = null;
 
 var WDW_LAT      = 28.3772;
 var WDW_LNG      = -81.5707;
@@ -476,7 +561,6 @@ var MICKEY_NAMES = [
   "chip","dale","buzz","woody","elsa","anna","moana","ariel",
   "belle","jasmine","mulan","tiana","rapunzel","aurora","cinderella","snow"
 ];
-
 var ROOM_WORDS = [
   "CASTLE","MICKEY","MAGIC","EPCOT","PIXAR","SPLASH",
   "NEMO","ELSA","GOOFY","WOODY","BUZZ","BELLE"
@@ -514,7 +598,7 @@ var STATE_COORDS = {
   "guam":                  [13.4,144.8],
   "us virgin islands":     [18.3,-64.9],
   "american samoa":        [-14.3,-170.7],
-  "northern mariana islands": [15.1,145.7]
+  "northern mariana islands":[15.1,145.7]
 };
 
 var COUNTRY_COORDS = {
@@ -577,27 +661,43 @@ var FLAGS = {
   "bahamas":"BS","barbados":"BB"
 };
 
-// ---- INIT FIREBASE ----
-function initFirebase() {
-  var statusBox = document.getElementById("status-box");
+// ---- SESSION STORAGE ----
+function saveSession() {
   try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    // Quick connectivity test
-    db.ref(".info/connected").on("value", function(snap) {
-      if (snap.val() === true) {
-        statusBox.textContent = "Connected! Ready to play.";
-        statusBox.className = "status-box";
-        setTimeout(function() { statusBox.style.display = "none"; }, 2000);
-      } else {
-        statusBox.textContent = "Connecting to Firebase...";
-        statusBox.className = "status-box";
-      }
-    });
-  } catch (e) {
-    statusBox.textContent = "Firebase error: " + e.message;
-    statusBox.className = "status-box error";
-  }
+    localStorage.setItem("passport_session", JSON.stringify({
+      myId:     myId,
+      myName:   myName,
+      roomCode: roomCode,
+      myStamps: myStamps,
+      amCreator: amCreator
+    }));
+  } catch(e) {}
+}
+
+function clearSession() {
+  try { localStorage.removeItem("passport_session"); } catch(e) {}
+}
+
+function loadSession() {
+  try {
+    var raw = localStorage.getItem("passport_session");
+    if (!raw) { return null; }
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+// ---- MODAL (replaces window.confirm) ----
+function showModal(title, msg, okLabel, onOk) {
+  document.getElementById("modal-title").textContent  = title;
+  document.getElementById("modal-msg").textContent    = msg;
+  document.getElementById("modal-ok").textContent     = okLabel;
+  modalOkFn = onOk;
+  document.getElementById("modal-overlay").classList.add("show");
+}
+
+function hideModal() {
+  document.getElementById("modal-overlay").classList.remove("show");
+  modalOkFn = null;
 }
 
 // ---- HELPERS ----
@@ -616,10 +716,10 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   var R    = 6371;
   var dLat = (lat2 - lat1) * Math.PI / 180;
   var dLng = (lng2 - lng1) * Math.PI / 180;
-  var a    = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-             Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
+             Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+             Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 function kmToMiles(km) { return Math.round(km * 0.621371); }
@@ -639,11 +739,8 @@ function distKmForStamp(stamp) {
   return isUSA ? 1000 : 5000;
 }
 
-function distPtsForKm(km) { return Math.max(1, Math.round(km / 100)); }
-
-function isMickeyName(name) {
-  return MICKEY_NAMES.indexOf(name.toLowerCase().trim()) !== -1;
-}
+function distPtsForKm(km)  { return Math.max(1, Math.round(km / 100)); }
+function isMickeyName(name){ return MICKEY_NAMES.indexOf(name.toLowerCase().trim()) !== -1; }
 
 function getFlag(stamp) {
   var c = stamp.country.toLowerCase();
@@ -692,13 +789,74 @@ function showMickeyBlast(name, pts) {
   document.getElementById("mickey-blast").classList.add("show");
 }
 
+// ---- FIREBASE INIT ----
+function initFirebase() {
+  var statusBox = document.getElementById("status-box");
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    db.ref(".info/connected").on("value", function(snap) {
+      if (snap.val() === true) {
+        statusBox.textContent = "Connected! Ready to play.";
+        statusBox.className   = "status-box";
+        setTimeout(function() { statusBox.style.display = "none"; }, 2000);
+        checkForSavedSession();
+      } else {
+        statusBox.textContent = "Connecting to Firebase...";
+        statusBox.className   = "status-box";
+      }
+    });
+  } catch(e) {
+    statusBox.textContent = "Firebase error: " + e.message;
+    statusBox.className   = "status-box error";
+  }
+}
+
+// ---- SESSION RESTORE ----
+function checkForSavedSession() {
+  var sess = loadSession();
+  if (!sess || !sess.myId || !sess.roomCode) { return; }
+
+  // Check if that room and player still exist and the game isn't over
+  db.ref("rooms/" + sess.roomCode).once("value", function(snap) {
+    if (!snap.exists()) { clearSession(); return; }
+    var roomData = snap.val();
+    // Don't rejoin an ended game
+    if (roomData.ended) { clearSession(); return; }
+    if (!roomData.players || !roomData.players[sess.myId]) { clearSession(); return; }
+
+    // Valid session found - show the rejoin banner
+    var banner = document.getElementById("rejoin-banner");
+    document.getElementById("rejoin-sub").textContent =
+      sess.myName + " in room " + sess.roomCode + " - " +
+      (roomData.players[sess.myId].points || 0) + " pts";
+    banner.style.display = "block";
+
+    document.getElementById("btn-rejoin").onclick = function() {
+      myId      = sess.myId;
+      myName    = sess.myName;
+      roomCode  = sess.roomCode;
+      myStamps  = sess.myStamps || [];
+      amCreator = sess.amCreator || false;
+      banner.style.display = "none";
+      startGame();
+    };
+
+    document.getElementById("btn-new-instead").onclick = function() {
+      clearSession();
+      banner.style.display = "none";
+    };
+  });
+}
+
 // ---- ROOM FUNCTIONS ----
 function createRoom() {
   if (!db) { showToast("Firebase not ready yet. Wait a moment."); return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { showToast("Enter your team name first!"); return; }
-  myName   = name;
-  roomCode = randomCode();
+  myName    = name;
+  roomCode  = randomCode();
+  amCreator = true;
   db.ref("rooms/" + roomCode).once("value", function(snap) {
     if (snap.exists()) { roomCode = randomCode() + Math.floor(Math.random() * 9); }
     document.getElementById("display-code").textContent   = roomCode;
@@ -710,10 +868,12 @@ function enterGame() {
   if (!db) { return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { return; }
-  myName = name;
+  myName    = name;
+  amCreator = true;
   var playerRef = db.ref("rooms/" + roomCode + "/players").push();
   myId = playerRef.key;
   playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+    saveSession();
     startGame();
   });
 }
@@ -726,11 +886,14 @@ function joinRoom() {
   if (!code) { showToast("Enter a room code!"); return; }
   db.ref("rooms/" + code).once("value", function(snap) {
     if (!snap.exists()) { showToast("Room not found! Check the code."); return; }
-    myName   = name;
-    roomCode = code;
+    if (snap.val().ended) { showToast("That game has already ended!"); return; }
+    myName    = name;
+    roomCode  = code;
+    amCreator = false;
     var playerRef = db.ref("rooms/" + roomCode + "/players").push();
     myId = playerRef.key;
     playerRef.set({ name: myName, points: 0, stamps: 0, countries: 0, states: 0 }, function() {
+      saveSession();
       startGame();
     });
   });
@@ -742,12 +905,40 @@ function startGame() {
   document.getElementById("bottom-bar").style.display   = "flex";
   document.getElementById("bar-code").textContent = roomCode;
   document.getElementById("bar-name").textContent = myName;
+
+  // Show End Game button only for the creator
+  if (amCreator) {
+    document.getElementById("btn-end").style.display = "block";
+  }
+
   subscribeToPlayers();
+  subscribeToGameState();
+
+  // Restore stat display from saved stamps
+  if (myStamps.length > 0) {
+    var totals = recalcTotals();
+    document.getElementById("my-points").textContent    = totals.totalPts;
+    document.getElementById("my-stamps").textContent    = myStamps.length;
+    document.getElementById("my-countries").textContent = totals.countries;
+    document.getElementById("my-states").textContent    = totals.states;
+    renderMyStamps();
+  }
 }
 
 function subscribeToPlayers() {
   db.ref("rooms/" + roomCode + "/players").on("value", function(snap) {
     renderPlayers(snap.val() || {});
+  });
+}
+
+// Watch for game ended signal
+function subscribeToGameState() {
+  db.ref("rooms/" + roomCode + "/ended").on("value", function(snap) {
+    if (snap.val() === true) {
+      db.ref("rooms/" + roomCode + "/players").once("value", function(psnap) {
+        showWinnerScreen(psnap.val() || {});
+      });
+    }
   });
 }
 
@@ -781,6 +972,49 @@ function renderPlayers(data) {
   document.getElementById("players-list").innerHTML = html;
 }
 
+// ---- END GAME ----
+function promptEndGame() {
+  showModal(
+    "End the game?",
+    "This will declare a winner for everyone and close the room.",
+    "End Game",
+    function() {
+      db.ref("rooms/" + roomCode + "/ended").set(true);
+    }
+  );
+}
+
+function showWinnerScreen(data) {
+  clearSession();
+  var list = [];
+  var keys = Object.keys(data);
+  for (var i = 0; i < keys.length; i++) {
+    var id = keys[i];
+    list.push({ name: data[id].name || "", points: data[id].points || 0, stamps: data[id].stamps || 0 });
+  }
+  list.sort(function(a, b) { return b.points - a.points; });
+
+  var winner = list[0] || { name: "Nobody", points: 0 };
+  document.getElementById("winner-name").textContent = winner.name;
+  document.getElementById("winner-pts").textContent  = winner.points + " points from " + winner.stamps + " stamps";
+
+  var medals = ["&#127947;","&#129352;","&#129353;"];
+  var boardHtml = "";
+  for (var j = 0; j < list.length; j++) {
+    var p   = list[j];
+    var cls = j === 0 ? "wb-row first" : "wb-row";
+    var medal = j < 3 ? medals[j] : (j+1) + ".";
+    boardHtml += "<div class='" + cls + "'>";
+    boardHtml += "<div class='wb-rank'>" + medal + "</div>";
+    boardHtml += "<div class='wb-name'>" + p.name + "</div>";
+    boardHtml += "<div class='wb-score'>" + p.points + "</div>";
+    boardHtml += "</div>";
+  }
+  document.getElementById("winner-board").innerHTML = boardHtml;
+  document.getElementById("winner-screen").classList.add("show");
+}
+
+// ---- STAMP ----
 function addStamp() {
   if (!db) { return; }
   var name    = document.getElementById("person-name").value.trim();
@@ -811,6 +1045,7 @@ function addStamp() {
     states:    totals.states
   });
 
+  saveSession();
   renderMyStamps();
 
   document.getElementById("person-name").value    = "";
@@ -849,8 +1084,17 @@ function renderMyStamps() {
   grid.innerHTML = html;
 }
 
+// ---- LEAVE ----
 function leaveGame() {
-  if (window.confirm("Leave this game?")) { location.reload(); }
+  showModal(
+    "Leave game?",
+    "Your stamps and score are saved. Use your room code to rejoin anytime.",
+    "Yes, leave",
+    function() {
+      clearSession();
+      location.reload();
+    }
+  );
 }
 
 // ---- WIRE UP ----
@@ -859,8 +1103,15 @@ document.getElementById("btn-enter").addEventListener("click",  enterGame);
 document.getElementById("btn-join").addEventListener("click",   joinRoom);
 document.getElementById("btn-stamp").addEventListener("click",  addStamp);
 document.getElementById("btn-leave").addEventListener("click",  leaveGame);
+document.getElementById("btn-end").addEventListener("click",    promptEndGame);
+document.getElementById("btn-new-game").addEventListener("click", function() { clearSession(); location.reload(); });
 document.getElementById("mickey-blast").addEventListener("click", function() {
   document.getElementById("mickey-blast").classList.remove("show");
+});
+document.getElementById("modal-cancel").addEventListener("click", hideModal);
+document.getElementById("modal-ok").addEventListener("click", function() {
+  hideModal();
+  if (modalOkFn) { modalOkFn(); }
 });
 
 // ---- BOOT ----
