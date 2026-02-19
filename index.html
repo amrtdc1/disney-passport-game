@@ -19,6 +19,8 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <style>
@@ -475,6 +477,33 @@ body::before {
   border-color: rgba(212,33,61,0.35);
   color: #ff8fa0;
 }
+
+/* PHONE AUTH SCREEN */
+#auth-screen { padding: 24px 16px; }
+.auth-logo { text-align: center; padding: 20px 0 28px; }
+.auth-logo .castle-icon { font-size: 48px; display: block; margin-bottom: 8px; }
+.auth-logo h1 { font-family: 'Playfair Display', serif; font-size: 28px; font-weight: 900; color: var(--gold); }
+.auth-logo h1 span { color: var(--cream); }
+.auth-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(244,192,75,0.25);
+  border-radius: 16px; padding: 28px 24px;
+}
+.auth-card h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); margin-bottom: 6px; }
+.auth-card p  { font-size: 13px; color: rgba(255,255,255,0.5); margin-bottom: 20px; line-height: 1.5; }
+.phone-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.country-code {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(244,192,75,0.3);
+  border-radius: 10px; padding: 12px 10px;
+  color: var(--cream); font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  width: 72px; text-align: center;
+  -webkit-appearance: none; appearance: none; outline: none;
+}
+.auth-note { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; margin-top: 14px; line-height: 1.6; }
+.auth-step { display: none; }
+.auth-step.active { display: block; }
 </style>
 
 </head>
@@ -482,22 +511,62 @@ body::before {
 
 <div class="app">
 
-  <div class="header">
+<!-- PHONE AUTH SCREEN - shown first, before everything else -->
+
+<div id="auth-screen">
+  <div class="auth-logo">
     <span class="castle-icon">&#127984;</span>
-    <div class="header-badge">Walt Disney World</div>
     <h1>Passport <span>Collector</span></h1>
   </div>
 
-  <!-- SETUP -->
+  <!-- Step 1: enter phone number -->
 
-  <div id="setup-screen">
+  <div class="auth-step active" id="auth-step-phone">
+    <div class="auth-card">
+      <h2>Welcome!</h2>
+      <p>Enter your phone number to sign in. We will text you a one-time code -- no password needed.</p>
+      <div class="phone-row">
+        <input type="text" class="country-code" id="auth-country-code" value="+1" maxlength="4">
+        <div class="input-group" style="flex:1; margin:0;">
+          <input type="tel" id="auth-phone" placeholder="(555) 867-5309"
+            maxlength="15" autocomplete="tel" style="width:100%;">
+        </div>
+      </div>
+      <button class="btn btn-primary" id="btn-send-code" type="button">Send Code</button>
+      <div class="auth-note">A 6-digit code will be sent via SMS. Standard messaging rates may apply.</div>
+      <div id="auth-recaptcha"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: enter verification code -->
+
+  <div class="auth-step" id="auth-step-code">
+    <div class="auth-card">
+      <h2>Check your texts!</h2>
+      <p id="auth-code-hint">Enter the 6-digit code sent to your number.</p>
+      <div class="input-group">
+        <label>Verification Code</label>
+        <input type="number" id="auth-code" placeholder="123456"
+          maxlength="6" autocomplete="one-time-code"
+          style="font-size:22px; letter-spacing:6px; text-align:center;">
+      </div>
+      <button class="btn btn-primary"   id="btn-verify-code" type="button">Verify</button>
+      <button class="btn btn-secondary" id="btn-back-phone"  type="button" style="margin-top:10px;">Change Number</button>
+      <div class="auth-note" id="auth-status-note"></div>
+    </div>
+  </div>
+</div>
+
+  <!-- SETUP (shown after phone auth) -->
+
+  <div id="setup-screen" style="display:none;">
     <div style="height:16px;"></div>
 
 <div id="status-box" class="status-box" style="margin:0 0 16px;">
   Connecting to Firebase...
 </div>
 
-<!-- Rejoin banner - shown when Firebase finds active games for this device -->
+<!-- Rejoin banner -->
 <div class="rejoin-banner" id="rejoin-banner" style="display:none;">
   <div class="rj-title">Welcome back!</div>
   <div class="rj-sub">Your active games</div>
@@ -505,16 +574,10 @@ body::before {
   <button class="btn btn-secondary" id="btn-new-instead" type="button" style="margin-top:10px; font-size:13px;">Start / Join a Different Game</button>
 </div>
 
-<!-- Past games (ended) - viewable forever -->
+<!-- Past games -->
 <div class="past-games-banner" id="past-games-banner" style="display:none;">
   <div class="pg-title">&#127942; Past Games</div>
   <div id="past-games-list"></div>
-</div>
-
-<!-- Device ID shown small at bottom so user can copy it into Firebase console to recover old sessions -->
-<div class="device-id-box">
-  Device ID: <span id="device-id-display"></span><br>
-  Tip: paste this into your player node in Firebase Realtime DB as the <strong style="color:rgba(255,255,255,0.4)">deviceId</strong> field to recover a lost session.
 </div>
 
 <div class="setup-card">
@@ -732,13 +795,20 @@ const firebaseConfig = {
   appId: "1:134143307824:web:a12ede396c472decce7df5"
 };
 
-var db        = null;
+// ---- GLOBALS ----
+var db            = null;
+var auth          = null;
+var currentUser   = null;   // Firebase Auth user -- uid replaces old deviceId
+var confirmResult = null;   // Phone auth confirmation result
+var recaptchaVerifier = null;
+
 var myName    = "";
-var myId      = null;
+var myId      = null;       // Firebase push key for this player node
 var roomCode  = "";
 var myStamps  = [];
 var amCreator = false;
 var modalOkFn = null;
+var editIndex = -1;
 
 var WDW_LAT      = 28.3772;
 var WDW_LNG      = -81.5707;
@@ -749,6 +819,7 @@ var MICKEY_NAMES = [
   "chip","dale","buzz","woody","elsa","anna","moana","ariel",
   "belle","jasmine","mulan","tiana","rapunzel","aurora","cinderella","snow"
 ];
+
 var ROOM_WORDS = [
   "CASTLE","MICKEY","MAGIC","EPCOT","PIXAR","SPLASH",
   "NEMO","ELSA","GOOFY","WOODY","BUZZ","BELLE"
@@ -849,180 +920,144 @@ var FLAGS = {
   "bahamas":"BS","barbados":"BB"
 };
 
-// ---- SESSION STORAGE ----
-function saveSession() {
-  try {
-    localStorage.setItem("passport_session", JSON.stringify({
-      myId:     myId,
-      myName:   myName,
-      roomCode: roomCode,
-      myStamps: myStamps,
-      amCreator: amCreator
-    }));
-  } catch(e) {}
-}
-
-function clearSession() {
-  try { localStorage.removeItem("passport_session"); } catch(e) {}
-}
-
-function loadSession() {
-  try {
-    var raw = localStorage.getItem("passport_session");
-    if (!raw) { return null; }
-    return JSON.parse(raw);
-  } catch(e) { return null; }
-}
-
-// ---- MODAL (replaces window.confirm) ----
-function showModal(title, msg, okLabel, onOk) {
-  document.getElementById("modal-title").textContent  = title;
-  document.getElementById("modal-msg").textContent    = msg;
-  document.getElementById("modal-ok").textContent     = okLabel;
-  modalOkFn = onOk;
-  document.getElementById("modal-overlay").classList.add("show");
-}
-
-// ---- HELPERS ----
-function showToast(msg) {
-  var t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  setTimeout(function() { t.classList.remove("show"); }, 2800);
-}
-
-function randomCode() {
-  return ROOM_WORDS[Math.floor(Math.random() * ROOM_WORDS.length)];
-}
-
-function haversineKm(lat1, lng1, lat2, lng2) {
-  var R    = 6371;
-  var dLat = (lat2 - lat1) * Math.PI / 180;
-  var dLng = (lng2 - lng1) * Math.PI / 180;
-  var a    = Math.sin(dLat/2) * Math.sin(dLat/2) +
-             Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
-             Math.sin(dLng/2) * Math.sin(dLng/2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-}
-
-function kmToMiles(km) { return Math.round(km * 0.621371); }
-
-function distKmForStamp(stamp) {
-  var c     = stamp.country.toLowerCase();
-  var s     = (stamp.state || "").toLowerCase();
-  var isUSA = (c === "usa" || c === "united states" || c === "us");
-  if (isUSA && s && STATE_COORDS[s]) {
-    var sc = STATE_COORDS[s];
-    return haversineKm(WDW_LAT, WDW_LNG, sc[0], sc[1]);
-  }
-  if (!isUSA && COUNTRY_COORDS[c]) {
-    var cc = COUNTRY_COORDS[c];
-    return haversineKm(WDW_LAT, WDW_LNG, cc[0], cc[1]);
-  }
-  return isUSA ? 1000 : 5000;
-}
-
-function distPtsForKm(km)  { return Math.max(1, Math.round(km / 100)); }
-function isMickeyName(name){ return MICKEY_NAMES.indexOf(name.toLowerCase().trim()) !== -1; }
-
-function getFlag(stamp) {
-  var c = stamp.country.toLowerCase();
-  if (c === "usa" || c === "united states" || c === "us") { return "US"; }
-  return FLAGS[c] || null;
-}
-
-function flagEmoji(code) {
-  if (!code) { return ""; }
-  var result = "";
-  for (var i = 0; i < code.length; i++) {
-    result += String.fromCodePoint(code.charCodeAt(i) - 65 + 0x1F1E6);
-  }
-  return result;
-}
-
-function stampClass(km) {
-  if (km < 500)  { return "s-near"; }
-  if (km < 2500) { return "s-mid";  }
-  if (km < 6000) { return "s-far";  }
-  return "s-intl";
-}
-
-function distLabel(km) {
-  var m = kmToMiles(km);
-  if (m < 100) { return m + " mi away"; }
-  return m.toLocaleString() + " mi";
-}
-
-function recalcTotals() {
-  var totalPts = 0, countries = 0, states = 0;
-  for (var i = 0; i < myStamps.length; i++) {
-    var s  = myStamps[i];
-    totalPts += s.pts;
-    var c  = s.country.toLowerCase();
-    var ok = (c === "usa" || c === "united states" || c === "us");
-    if (!ok) { countries++; }
-    else if (s.state) { states++; }
-  }
-  return { totalPts: totalPts, countries: countries, states: states };
-}
-
-function showMickeyBlast(name, pts) {
-  document.getElementById("mb-name-display").textContent = name + " triggered the bonus!";
-  document.getElementById("mb-pts-display").textContent  = "+" + pts + " pts";
-  document.getElementById("mickey-blast").classList.add("show");
-}
-
-// ---- FIREBASE INIT ----
+// ---- PHONE AUTH ----
 function initFirebase() {
-  var statusBox = document.getElementById("status-box");
   try {
     firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    db.ref(".info/connected").on("value", function(snap) {
-      if (snap.val() === true) {
-        statusBox.textContent = "Connected! Ready to play.";
-        statusBox.className   = "status-box";
-        setTimeout(function() { statusBox.style.display = "none"; }, 2000);
-        checkForSavedSession();
+    auth = firebase.auth();
+    db   = firebase.database();
+
+    // onAuthStateChanged fires immediately on load if already signed in
+    auth.onAuthStateChanged(function(user) {
+      if (user) {
+        currentUser = user;
+        showSetupScreen();
       } else {
-        statusBox.textContent = "Connecting to Firebase...";
-        statusBox.className   = "status-box";
+        currentUser = null;
+        document.getElementById("auth-screen").style.display  = "block";
+        document.getElementById("setup-screen").style.display = "none";
+        initRecaptcha();
       }
     });
+
+    // DB connection indicator
+    db.ref(".info/connected").on("value", function(snap) {
+      var statusBox = document.getElementById("status-box");
+      if (!statusBox) { return; }
+      if (snap.val() === true) {
+        statusBox.textContent = "Connected! Searching your games...";
+        statusBox.className   = "status-box";
+        if (currentUser) { findActiveGamesForDevice(); }
+        setTimeout(function() { statusBox.style.display = "none"; }, 2000);
+      } else {
+        statusBox.style.display = "block";
+        statusBox.textContent   = "Connecting to Firebase...";
+        statusBox.className     = "status-box";
+      }
+    });
+
   } catch(e) {
-    statusBox.textContent = "Firebase error: " + e.message;
-    statusBox.className   = "status-box error";
+    showAuthNote("Firebase error: " + e.message);
   }
 }
 
-// ---- DEVICE ID ----
-// A stable identifier stored in localStorage. Much lighter than full session --
-// just an ID, so it survives PWA updates far better than game state does.
-function getDeviceId() {
+function initRecaptcha() {
   try {
-    var id = localStorage.getItem("passport_device_id");
-    if (!id) {
-      id = "dev_" + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      localStorage.setItem("passport_device_id", id);
-    }
-    return id;
+    if (recaptchaVerifier) { return; } // already set up
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier("btn-send-code", {
+      size: "invisible"
+    });
   } catch(e) {
-    // localStorage blocked -- generate a session-only id
-    if (!window._fallbackDeviceId) {
-      window._fallbackDeviceId = "dev_" + Math.random().toString(36).slice(2);
-    }
-    return window._fallbackDeviceId;
+    console.log("reCAPTCHA init:", e.message);
   }
 }
 
-var deviceId = getDeviceId();
+function sendCode() {
+  var cc    = (document.getElementById("auth-country-code").value.trim() || "+1");
+  var phone = document.getElementById("auth-phone").value.trim().replace(/\D/g, "");
+  if (!phone) { showAuthNote("Enter your phone number first."); return; }
+  if (!cc.startsWith("+")) { cc = "+" + cc; }
+  var fullNumber = cc + phone;
 
-// ---- SESSION (lightweight local hint only) ----
+  showAuthNote("Sending code...");
+  document.getElementById("btn-send-code").disabled = true;
+
+  auth.signInWithPhoneNumber(fullNumber, recaptchaVerifier)
+    .then(function(result) {
+      confirmResult = result;
+      document.getElementById("auth-step-phone").classList.remove("active");
+      document.getElementById("auth-step-code").classList.add("active");
+      document.getElementById("auth-code-hint").textContent =
+        "Enter the 6-digit code sent to " + fullNumber;
+      showAuthNote("");
+    })
+    .catch(function(err) {
+      document.getElementById("btn-send-code").disabled = false;
+      showAuthNote(friendlyAuthError(err.code));
+      // Reset reCAPTCHA so user can try again
+      if (recaptchaVerifier) {
+        recaptchaVerifier.render().then(function(id) {
+          if (typeof grecaptcha !== "undefined") { grecaptcha.reset(id); }
+        });
+      }
+    });
+}
+
+function verifyCode() {
+  var code = document.getElementById("auth-code").value.trim();
+  if (!code || code.length < 6) { showAuthNote("Enter the 6-digit code."); return; }
+  if (!confirmResult) { showAuthNote("Please request a new code."); return; }
+
+  showAuthNote("Verifying...");
+  document.getElementById("btn-verify-code").disabled = true;
+
+  confirmResult.confirm(code)
+    .then(function(result) {
+      currentUser = result.user;
+      // onAuthStateChanged fires automatically and calls showSetupScreen()
+    })
+    .catch(function(err) {
+      document.getElementById("btn-verify-code").disabled = false;
+      showAuthNote(friendlyAuthError(err.code));
+    });
+}
+
+function backToPhone() {
+  document.getElementById("auth-step-code").classList.remove("active");
+  document.getElementById("auth-step-phone").classList.add("active");
+  document.getElementById("auth-code").value = "";
+  showAuthNote("");
+  confirmResult = null;
+  // Re-initialise reCAPTCHA for a fresh attempt
+  recaptchaVerifier = null;
+  initRecaptcha();
+}
+
+function showAuthNote(msg) {
+  var el = document.getElementById("auth-status-note");
+  if (el) { el.textContent = msg; }
+}
+
+function friendlyAuthError(code) {
+  var msgs = {
+    "auth/invalid-phone-number":      "Invalid phone number. Try including your country code.",
+    "auth/too-many-requests":         "Too many attempts. Please wait a moment and try again.",
+    "auth/invalid-verification-code": "Wrong code -- check your texts and try again.",
+    "auth/code-expired":              "Code expired. Go back and request a new one.",
+    "auth/missing-phone-number":      "Please enter your phone number."
+  };
+  return msgs[code] || ("Error: " + code);
+}
+
+function showSetupScreen() {
+  document.getElementById("auth-screen").style.display  = "none";
+  document.getElementById("setup-screen").style.display = "block";
+  // findActiveGamesForDevice() is called by the .info/connected listener
+}
+
+// ---- SESSION ----
 function saveSession() {
-  try {
-    // Store minimal local hint -- the real source of truth is Firebase
-    localStorage.setItem("passport_last_room", roomCode);
-  } catch(e) {}
+  try { localStorage.setItem("passport_last_room", roomCode); } catch(e) {}
 }
 
 function clearSession() {
@@ -1030,6 +1065,13 @@ function clearSession() {
 }
 
 // ---- MODAL ----
+function showModal(title, msg, okLabel, onOk) {
+  document.getElementById("modal-title").textContent = title;
+  document.getElementById("modal-msg").textContent   = msg;
+  document.getElementById("modal-ok").textContent    = okLabel;
+  modalOkFn = onOk;
+  document.getElementById("modal-overlay").classList.add("show");
+}
 
 function hideModal() {
   document.getElementById("modal-overlay").classList.remove("show");
@@ -1125,56 +1167,32 @@ function showMickeyBlast(name, pts) {
   document.getElementById("mickey-blast").classList.add("show");
 }
 
-// ---- FIREBASE INIT ----
-function initFirebase() {
-  var statusBox = document.getElementById("status-box");
-
-  // Show device ID so user can paste it into Firebase console to recover a session
-  var didEl = document.getElementById("device-id-display");
-  if (didEl) { didEl.textContent = deviceId; }
-
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    db.ref(".info/connected").on("value", function(snap) {
-      if (snap.val() === true) {
-        statusBox.textContent = "Connected! Searching for your games...";
-        statusBox.className   = "status-box";
-        findActiveGamesForDevice();
-      } else {
-        statusBox.textContent = "Connecting to Firebase...";
-        statusBox.className   = "status-box";
-      }
-    });
-  } catch(e) {
-    statusBox.textContent = "Firebase error: " + e.message;
-    statusBox.className   = "status-box error";
-  }
-}
-
-// ---- FIND ALL ACTIVE GAMES FOR THIS DEVICE ----
-// Scans every room in Firebase for a player whose deviceId matches ours.
-// Fast path: checks lastRoom first, then scans all others in parallel.
+// ---- FIND ALL ACTIVE GAMES FOR THIS USER ----
+// Scans every room in Firebase for a player whose uid matches the signed-in user.
 function findActiveGamesForDevice() {
   var statusBox = document.getElementById("status-box");
+  var uid = currentUser ? currentUser.uid : null;
+  if (!uid) { return; }
 
   db.ref("rooms").once("value", function(snap) {
     if (!snap.exists()) {
-      statusBox.textContent = "Connected! Ready to play.";
-      setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+      if (statusBox) {
+        statusBox.textContent = "Connected! Ready to play.";
+        setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+      }
       return;
     }
 
-    var allRooms   = snap.val();
-    var active     = []; // rooms still in progress
-    var ended      = []; // finished rooms
+    var allRooms = snap.val();
+    var active   = [];
+    var ended    = [];
 
     Object.keys(allRooms).forEach(function(code) {
       var room = allRooms[code];
       if (!room.players) { return; }
       Object.keys(room.players).forEach(function(pid) {
         var p = room.players[pid];
-        if (p.deviceId && p.deviceId === deviceId) {
+        if (p.uid && p.uid === uid) {
           var entry = { roomCode: code, playerId: pid, playerData: p };
           if (room.ended) {
             ended.push({ entry: entry, room: room });
@@ -1185,9 +1203,11 @@ function findActiveGamesForDevice() {
       });
     });
 
-    statusBox.textContent = "Connected! Ready to play.";
-    statusBox.className   = "status-box";
-    setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+    if (statusBox) {
+      statusBox.textContent = "Connected! Ready to play.";
+      statusBox.className   = "status-box";
+      setTimeout(function() { statusBox.style.display = "none"; }, 1500);
+    }
 
     if (active.length > 0) { showRejoinOptions(active, allRooms); }
     if (ended.length  > 0) { showPastGames(ended); }
@@ -1195,21 +1215,17 @@ function findActiveGamesForDevice() {
 }
 
 // ---- SHOW REJOIN OPTIONS ----
-// Renders a card per active game the device is in.
 function showRejoinOptions(found, allRooms) {
   var banner = document.getElementById("rejoin-banner");
   var list   = document.getElementById("rejoin-list");
-
   list.innerHTML = "";
 
   found.forEach(function(entry) {
-    var room = allRooms[entry.roomCode];
-    var pd   = entry.playerData;
-    var stamps = pd.stamps  || 0;
-    var pts    = pd.points  || 0;
-    var name   = pd.name    || "Unknown";
-
-    // Count players in room
+    var room        = allRooms[entry.roomCode];
+    var pd          = entry.playerData;
+    var stamps      = pd.stamps || 0;
+    var pts         = pd.points || 0;
+    var name        = pd.name   || "Unknown";
     var playerCount = room.players ? Object.keys(room.players).length : 0;
 
     var card = document.createElement("div");
@@ -1219,19 +1235,18 @@ function showRejoinOptions(found, allRooms) {
         "<div class='rc-room'>Room: <strong>" + entry.roomCode + "</strong>" +
           " &nbsp;&#183;&nbsp; " + playerCount + " player" + (playerCount !== 1 ? "s" : "") + "</div>" +
         "<div class='rc-name'>" + name + "</div>" +
-        "<div class='rc-stats'>" + pts + " pts &nbsp;&#183;&nbsp; " + stamps + " stamp" + (stamps !== 1 ? "s" : "") + "</div>" +
+        "<div class='rc-stats'>" + pts + " pts &nbsp;&#183;&nbsp; " +
+          stamps + " stamp" + (stamps !== 1 ? "s" : "") + "</div>" +
       "</div>" +
       "<button class='btn btn-primary rc-btn' type='button'>Rejoin</button>";
 
     card.querySelector(".rc-btn").addEventListener("click", function() {
       rejoinGame(entry, allRooms[entry.roomCode]);
     });
-
     list.appendChild(card);
   });
 
   banner.style.display = "block";
-
   document.getElementById("btn-new-instead").onclick = function() {
     banner.style.display = "none";
   };
@@ -1256,14 +1271,13 @@ function showPastGames(endedList) {
           " &nbsp;&#183;&nbsp; " + playerCount + " player" + (playerCount !== 1 ? "s" : "") + "</div>" +
         "<div class='rc-name'>" + (pd.name || "Unknown") + "</div>" +
         "<div class='rc-stats'>" + (pd.points || 0) + " pts &nbsp;&#183;&nbsp; " +
-          (pd.stamps || 0) + " stamp" + (pd.stamps !== 1 ? "s" : "") + " &nbsp;&#183;&nbsp; Final</div>" +
+          (pd.stamps || 0) + " stamps &nbsp;&#183;&nbsp; Final</div>" +
       "</div>" +
       "<button class='btn rc-btn' type='button'>Results</button>";
 
     card.querySelector(".rc-btn").addEventListener("click", function() {
       viewResults(item.room);
     });
-
     list.appendChild(card);
   });
 
@@ -1271,25 +1285,22 @@ function showPastGames(endedList) {
 }
 
 function viewResults(roomData) {
-  // Show the results screen populated from a past game's full room data
   renderResultsScreen(roomData.players || {});
   document.getElementById("winner-screen").classList.add("show");
 }
 
-// ---- REJOIN A SPECIFIC GAME ----
+// ---- REJOIN ----
 function rejoinGame(entry, roomData) {
   var pd        = entry.playerData;
   var savedPts  = pd.points      || 0;
   var savedData = pd.stamps_data || [];
 
-  // No mismatch -- just go straight in
   if (savedPts === 0 || savedData.length > 0) {
     doRejoin(entry, pd, savedData);
     return;
   }
 
-  // Points exist but no stamp records -- show reconciliation choice.
-  // Use a dedicated two-button overlay instead of repurposing the modal.
+  // Points exist but no stamp records -- show reconciliation choice
   var overlay = document.getElementById("reconcile-overlay");
   document.getElementById("reconcile-pts").textContent = savedPts + " pts";
   overlay.classList.add("show");
@@ -1327,7 +1338,7 @@ function doRejoin(entry, pd, stampsData) {
 
 // ---- ROOM FUNCTIONS ----
 function createRoom() {
-  if (!db) { showToast("Firebase not ready yet. Wait a moment."); return; }
+  if (!db) { showToast("Firebase not ready yet."); return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { showToast("Enter your team name first!"); return; }
   myName    = name;
@@ -1341,7 +1352,7 @@ function createRoom() {
 }
 
 function enterGame() {
-  if (!db) { return; }
+  if (!db || !currentUser) { return; }
   var name = document.getElementById("create-name").value.trim();
   if (!name) { return; }
   myName    = name;
@@ -1354,7 +1365,7 @@ function enterGame() {
     stamps:      0,
     countries:   0,
     states:      0,
-    deviceId:    deviceId,
+    uid:         currentUser.uid,
     amCreator:   true,
     stamps_data: []
   }, function() {
@@ -1364,7 +1375,7 @@ function enterGame() {
 }
 
 function joinRoom() {
-  if (!db) { showToast("Firebase not ready yet. Wait a moment."); return; }
+  if (!db || !currentUser) { showToast("Not signed in yet."); return; }
   var name = document.getElementById("join-name").value.trim();
   var code = document.getElementById("join-code").value.trim().toUpperCase();
   if (!name) { showToast("Enter your team name!"); return; }
@@ -1383,7 +1394,7 @@ function joinRoom() {
       stamps:      0,
       countries:   0,
       states:      0,
-      deviceId:    deviceId,
+      uid:         currentUser.uid,
       amCreator:   false,
       stamps_data: []
     }, function() {
@@ -1438,12 +1449,7 @@ function renderPlayers(data) {
   var keys = Object.keys(data);
   for (var i = 0; i < keys.length; i++) {
     var id = keys[i];
-    list.push({
-      id:     id,
-      name:   data[id].name   || "",
-      points: data[id].points || 0,
-      stamps: data[id].stamps || 0
-    });
+    list.push({ id: id, name: data[id].name || "", points: data[id].points || 0, stamps: data[id].stamps || 0 });
   }
   list.sort(function(a, b) { return b.points - a.points; });
   var maxPts = list.length > 0 ? list[0].points : 0;
@@ -1502,8 +1508,7 @@ function renderResultsScreen(data) {
   document.getElementById("winner-pts").textContent  =
     winner.points + " points -- " + winner.stamps + " stamp" + (winner.stamps !== 1 ? "s" : "");
 
-  // Leaderboard rows
-  var medals   = ["&#127947;","&#129352;","&#129353;"];
+  var medals    = ["&#127947;","&#129352;","&#129353;"];
   var boardHtml = "";
   for (var j = 0; j < list.length; j++) {
     var p2   = list[j];
@@ -1517,7 +1522,6 @@ function renderResultsScreen(data) {
   }
   document.getElementById("winner-board").innerHTML = boardHtml;
 
-  // Collapsible stamp galleries per player
   var galContainer = document.getElementById("winner-galleries");
   galContainer.innerHTML = "";
   for (var k = 0; k < list.length; k++) {
@@ -1533,7 +1537,6 @@ function buildGallery(player, rank) {
   var div = document.createElement("div");
   div.className = "gallery-player" + (isFirst ? " first open" : "");
 
-  // Header (tap to toggle)
   var header = document.createElement("div");
   header.className = "gallery-header";
   header.innerHTML =
@@ -1546,11 +1549,8 @@ function buildGallery(player, rank) {
     "</div>" +
     "<div class='gallery-chevron'>&#9660;</div>";
 
-  header.addEventListener("click", function() {
-    div.classList.toggle("open");
-  });
+  header.addEventListener("click", function() { div.classList.toggle("open"); });
 
-  // Stamp grid
   var grid = document.createElement("div");
   grid.className = "gallery-stamps";
 
@@ -1585,7 +1585,7 @@ function buildStampTile(stamp) {
   return tile;
 }
 
-// ---- STAMP ----
+// ---- STAMP CRUD ----
 function addStamp() {
   if (!db) { return; }
   var name    = document.getElementById("person-name").value.trim();
@@ -1601,13 +1601,18 @@ function addStamp() {
   stamp.km    = km;
   stamp.pts   = dp + (mickey ? MICKEY_BONUS : 0);
   stamp.mickey = mickey;
-  myStamps.push(stamp);
 
+  myStamps.push(stamp);
   var totals = recalcTotals();
+
   document.getElementById("my-points").textContent    = totals.totalPts;
   document.getElementById("my-stamps").textContent    = myStamps.length;
   document.getElementById("my-countries").textContent = totals.countries;
   document.getElementById("my-states").textContent    = totals.states;
+
+  document.getElementById("person-name").value    = "";
+  document.getElementById("person-country").value = "";
+  document.getElementById("person-state").value   = "";
 
   db.ref("rooms/" + roomCode + "/players/" + myId).update({
     points:      totals.totalPts,
@@ -1619,21 +1624,61 @@ function addStamp() {
 
   saveSession();
   renderMyStamps();
+  showToast("+" + stamp.pts + " pts! Stamp collected!");
 
-  document.getElementById("person-name").value    = "";
-  document.getElementById("person-country").value = "";
-  document.getElementById("person-state").value   = "";
+  if (mickey) { showMickeyBlast(name, stamp.pts); }
+}
 
-  if (mickey) {
-    setTimeout(function() { showMickeyBlast(name, stamp.pts); }, 200);
-  } else {
-    showToast("+" + dp + " pts - " + distLabel(km) + " from Disney!");
+function syncTotals() {
+  var totals = recalcTotals();
+  document.getElementById("my-points").textContent    = totals.totalPts;
+  document.getElementById("my-stamps").textContent    = myStamps.length;
+  document.getElementById("my-countries").textContent = totals.countries;
+  document.getElementById("my-states").textContent    = totals.states;
+  db.ref("rooms/" + roomCode + "/players/" + myId).update({
+    points:      totals.totalPts,
+    stamps:      myStamps.length,
+    countries:   totals.countries,
+    states:      totals.states,
+    stamps_data: myStamps
+  });
+  saveSession();
+  renderMyStamps();
+}
+
+function renderMyStamps() {
+  var grid = document.getElementById("stamps-grid");
+  if (myStamps.length === 0) {
+    grid.innerHTML = "<div class='empty-stamps'><span class='empty-big'>&#9992;&#65039;</span>Ask someone where they are from!</div>";
+    return;
+  }
+  var html = "";
+  for (var i = myStamps.length - 1; i >= 0; i--) {
+    var s       = myStamps[i];
+    var cls     = "stamp " + (s.mickey ? "s-mickey" : stampClass(s.km));
+    var fcode   = getFlag(s);
+    var flagStr = s.mickey ? "&#128045;" : flagEmoji(fcode);
+    var loc     = s.state ? (s.state + ", " + s.country) : s.country;
+    var dist    = s.mickey ? "Mickey Bonus!" : distLabel(s.km);
+    html += "<div class='" + cls + "' data-idx='" + i + "'>";
+    html += "<div class='stamp-pts'>+" + s.pts + "</div>";
+    html += "<div class='stamp-flag'>" + flagStr + "</div>";
+    html += "<div class='stamp-name'>" + s.name + "</div>";
+    html += "<div class='stamp-loc'>"  + loc    + "</div>";
+    html += "<div class='stamp-dist'>" + dist   + "</div>";
+    html += "</div>";
+  }
+  grid.innerHTML = html;
+
+  var stamps = grid.querySelectorAll(".stamp");
+  for (var j = 0; j < stamps.length; j++) {
+    stamps[j].addEventListener("click", function() {
+      openEditDrawer(parseInt(this.getAttribute("data-idx"), 10));
+    });
   }
 }
 
 // ---- EDIT STAMP ----
-var editIndex = -1;
-
 function openEditDrawer(index) {
   editIndex = index;
   var s = myStamps[index];
@@ -1687,58 +1732,6 @@ function deleteStamp() {
   );
 }
 
-function syncTotals() {
-  var totals = recalcTotals();
-  document.getElementById("my-points").textContent    = totals.totalPts;
-  document.getElementById("my-stamps").textContent    = myStamps.length;
-  document.getElementById("my-countries").textContent = totals.countries;
-  document.getElementById("my-states").textContent    = totals.states;
-  // Write stamps_data so Firebase is the source of truth for stamp collection
-  db.ref("rooms/" + roomCode + "/players/" + myId).update({
-    points:      totals.totalPts,
-    stamps:      myStamps.length,
-    countries:   totals.countries,
-    states:      totals.states,
-    stamps_data: myStamps
-  });
-  saveSession();
-  renderMyStamps();
-}
-
-function renderMyStamps() {
-  var grid = document.getElementById("stamps-grid");
-  if (myStamps.length === 0) {
-    grid.innerHTML = "<div class='empty-stamps'><span class='empty-big'>&#9992;&#65039;</span>Ask someone where they are from!</div>";
-    return;
-  }
-  var html = "";
-  for (var i = myStamps.length - 1; i >= 0; i--) {
-    var s       = myStamps[i];
-    var cls     = "stamp " + (s.mickey ? "s-mickey" : stampClass(s.km));
-    var fcode   = getFlag(s);
-    var flagStr = s.mickey ? "&#128045;" : flagEmoji(fcode);
-    var loc     = s.state ? (s.state + ", " + s.country) : s.country;
-    var dist    = s.mickey ? "Mickey Bonus!" : distLabel(s.km);
-    // data-idx stores the actual array index so taps work correctly
-    html += "<div class='" + cls + "' data-idx='" + i + "'>";
-    html += "<div class='stamp-pts'>+" + s.pts + "</div>";
-    html += "<div class='stamp-flag'>" + flagStr + "</div>";
-    html += "<div class='stamp-name'>" + s.name + "</div>";
-    html += "<div class='stamp-loc'>"  + loc    + "</div>";
-    html += "<div class='stamp-dist'>" + dist   + "</div>";
-    html += "</div>";
-  }
-  grid.innerHTML = html;
-
-  // Attach tap listeners to every stamp
-  var stamps = grid.querySelectorAll(".stamp");
-  for (var j = 0; j < stamps.length; j++) {
-    stamps[j].addEventListener("click", function() {
-      openEditDrawer(parseInt(this.getAttribute("data-idx"), 10));
-    });
-  }
-}
-
 // ---- LEAVE ----
 function leaveGame() {
   showModal(
@@ -1755,39 +1748,52 @@ function leaveGame() {
 // ---- BOOT ----
 window.addEventListener("load", function() {
   try { initFirebase(); } catch(e) {
-    document.getElementById("status-box").textContent = "Init error: " + e.message;
-    document.getElementById("status-box").className = "status-box error";
+    showAuthNote("Init error: " + e.message);
   }
 
-  // Wire up all buttons inside load so any parse-time errors above can't block this
   function on(id, fn) {
     var el = document.getElementById(id);
     if (el) { el.addEventListener("click", fn); }
   }
 
-  on("btn-create",   createRoom);
-  on("btn-enter",    enterGame);
-  on("btn-join",     joinRoom);
-  on("btn-stamp",    addStamp);
-  on("btn-leave",    leaveGame);
-  on("btn-end",      promptEndGame);
+  // Auth screen
+  on("btn-send-code",   sendCode);
+  on("btn-verify-code", verifyCode);
+  on("btn-back-phone",  backToPhone);
+
+  // Setup screen
+  on("btn-create",    createRoom);
+  on("btn-enter",     enterGame);
+  on("btn-join",      joinRoom);
+
+  // Game screen
+  on("btn-stamp",     addStamp);
+  on("btn-leave",     leaveGame);
+  on("btn-end",       promptEndGame);
+
+  // Results screen
   on("btn-new-game",     function() { clearSession(); location.reload(); });
   on("btn-results-back", function() {
     document.getElementById("winner-screen").classList.remove("show");
   });
+
+  // Mickey blast overlay
   on("mickey-blast", function() {
     document.getElementById("mickey-blast").classList.remove("show");
   });
+
+  // Modal
   on("modal-cancel", hideModal);
   on("modal-ok", function() {
     var fn = modalOkFn;
     hideModal();
     if (fn) { fn(); }
   });
+
+  // Edit stamp drawer
   on("edit-save",   saveEditedStamp);
   on("edit-cancel", closeEditDrawer);
   on("edit-delete", deleteStamp);
-  // Tap outside drawer to cancel
   document.getElementById("edit-overlay").addEventListener("click", function(e) {
     if (e.target === this) { closeEditDrawer(); }
   });
@@ -1798,6 +1804,7 @@ window.addEventListener("load", function() {
     });
   }
 });
+
 </script>
 
 </body>
