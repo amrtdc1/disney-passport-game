@@ -904,6 +904,48 @@ var FLAGS = {
   "bahamas":"BS","barbados":"BB"
 };
 
+  function findBadDbKeys(allRooms) {
+  const badRe = /[.#$\[\]\/]/;
+
+  const bad = [];
+
+  for (const roomCode of Object.keys(allRooms || {})) {
+    if (!roomCode || badRe.test(roomCode)) {
+      bad.push({ type: "roomCode", key: roomCode });
+      continue;
+    }
+
+    const room = allRooms[roomCode];
+    const players = room && room.players ? room.players : null;
+    if (!players) continue;
+
+    for (const pid of Object.keys(players)) {
+      if (!pid || badRe.test(pid)) {
+        bad.push({ type: "playerId", roomCode, key: pid });
+      }
+    }
+  }
+
+  return bad;
+}
+
+// TEMP: call this once to identify offenders
+import { get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+async function debugScanRooms() {
+  const snap = await get(ref(db, "rooms"));
+  const rooms = snap.exists() ? snap.val() : {};
+  const bad = findBadDbKeys(rooms);
+
+  if (bad.length) {
+    console.warn("🚨 Found invalid RTDB keys:", bad);
+    alert("Found invalid RTDB keys. Check console (🚨).");
+  } else {
+    console.log("✅ No invalid room/player keys found.");
+  }
+}
+
+
 // ---- PHONE AUTH ----
 function showAuthNote(msg) {
   var el = document.getElementById("auth-status-note");
