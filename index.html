@@ -1636,10 +1636,8 @@ window.addEventListener("load", function() {
       currentUser = user;
       showSetupScreen();
 
-      // Find games once DB confirms connected
-      get(ref(db, ".info/connected")).then(function() {
-        findActiveGamesForDevice();
-      });
+      // Find any active/past games for this user
+      findActiveGamesForDevice();
     } else {
       currentUser = null;
       document.getElementById("auth-screen").style.display  = "block";
